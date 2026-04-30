@@ -37,6 +37,12 @@ def main() -> None:
         help="WebSocket port for Aseprite bridge (default: 8765)",
     )
     parser.add_argument(
+        "--output-dir",
+        type=str,
+        default=None,
+        help="Directory for generated assets (default: generated_assets/)",
+    )
+    parser.add_argument(
         "--verbose", "-v",
         action="store_true",
         help="Enable verbose logging",
@@ -59,6 +65,11 @@ def main() -> None:
         import os
 
         os.environ["ASEPRITE_WS_PORT"] = str(args.ws_port)
+
+    if args.output_dir:
+        import os
+
+        os.environ["ASEPRITE_OUTPUT_DIR"] = args.output_dir
 
     from aseprite_mcp.server import run_server
 

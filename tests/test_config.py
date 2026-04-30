@@ -18,6 +18,7 @@ class TestAsepriteConfig:
         assert config.ws_host == "127.0.0.1"
         assert config.ws_port == 8765
         assert config.tmp_dir == Path("/tmp/aseprite_mcp_scripts")
+        assert config.output_dir == Path("generated_assets")
 
     def test_custom_values(self) -> None:
         config = AsepriteConfig(
@@ -25,11 +26,13 @@ class TestAsepriteConfig:
             ws_host="0.0.0.0",
             ws_port=9999,
             tmp_dir=Path("/custom/tmp"),
+            output_dir=Path("/custom/output"),
         )
         assert config.aseprite_path == "/custom/aseprite"
         assert config.ws_host == "0.0.0.0"
         assert config.ws_port == 9999
         assert config.tmp_dir == Path("/custom/tmp")
+        assert config.output_dir == Path("/custom/output")
 
     def test_from_env_with_path(self, tmp_path: Path) -> None:
         fake_binary = tmp_path / "aseprite"
@@ -63,6 +66,18 @@ class TestAsepriteConfig:
             assert config.ws_host == "0.0.0.0"
             assert config.ws_port == 9999
 
+    def test_from_env_custom_output_dir(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "ASEPRITE_PATH": "/usr/bin/aseprite",
+                "ASEPRITE_OUTPUT_DIR": "/custom/assets",
+            },
+            clear=False,
+        ):
+            config = AsepriteConfig.from_env()
+            assert config.output_dir == Path("/custom/assets")
+
     def test_ensure_tmp_dir(self, tmp_path: Path) -> None:
         new_tmp = tmp_path / "aseprite_test_tmp"
         config = AsepriteConfig(
@@ -79,6 +94,32 @@ class TestAsepriteConfig:
         config.ensure_tmp_dir()
         config.ensure_tmp_dir()
         assert new_tmp.is_dir()
+
+    def test_ensure_output_dir(self, tmp_path: Path) -> None:
+        out_dir = tmp_path / "output"
+        config = AsepriteConfig(
+            aseprite_path="/usr/bin/aseprite", output_dir=out_dir
+        )
+        config.ensure_output_dir()
+        assert out_dir.is_dir()
+
+    def test_ensure_output_dir_idempotent(self, tmp_path: Path) -> None:
+        out_dir = tmp_path / "output2"
+        config = AsepriteConfig(
+            aseprite_path="/usr/bin/aseprite", output_dir=out_dir
+        )
+        config.ensure_output_dir()
+        config.ensure_output_dir()
+        assert out_dir.is_dir()
+
+    def test_resolve_output_path(self, tmp_path: Path) -> None:
+        out_dir = tmp_path / "assets"
+        config = AsepriteConfig(
+            aseprite_path="/usr/bin/aseprite", output_dir=out_dir
+        )
+        result = config.resolve_output_path("sprite.ase")
+        assert result == out_dir / "sprite.ase"
+        assert out_dir.is_dir()
 
     def test_find_aseprite_binary_with_which(self) -> None:
         with patch(

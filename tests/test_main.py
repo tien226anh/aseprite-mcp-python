@@ -39,9 +39,24 @@ class TestMain:
             ),
             patch("aseprite_mcp.server.run_server"),
         ):
-                import os
+            import os
 
-                from aseprite_mcp.__main__ import main
+            from aseprite_mcp.__main__ import main
 
-                main()
-                assert os.environ.get("ASEPRITE_PATH") == "/custom/aseprite"
+            main()
+            assert os.environ.get("ASEPRITE_PATH") == "/custom/aseprite"
+
+    def test_main_sets_output_dir(self) -> None:
+        with (
+            patch(
+                "sys.argv",
+                ["aseprite-mcp", "--output-dir", "/custom/assets"],
+            ),
+            patch("aseprite_mcp.server.run_server"),
+        ):
+            import os
+
+            from aseprite_mcp.__main__ import main
+
+            main()
+            assert os.environ.get("ASEPRITE_OUTPUT_DIR") == "/custom/assets"

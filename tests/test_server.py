@@ -16,6 +16,7 @@ def config(tmp_path) -> AsepriteConfig:
     return AsepriteConfig(
         aseprite_path="/usr/bin/aseprite",
         tmp_dir=tmp_path / "scripts",
+        output_dir=tmp_path / "output",
     )
 
 
@@ -66,6 +67,47 @@ class TestServerTools:
             input_path="test.pdf", output_path="out.png"
         )
         assert "Error" in result
+
+    @pytest.mark.asyncio
+    async def test_sprite_export_default_output(
+        self, config: AsepriteConfig
+    ) -> None:
+        from aseprite_mcp import server as srv
+
+        mock_cli = MagicMock(spec=AsepriteCLI)
+        mock_cli.run_json_script.return_value = {
+            "output": "generated_assets/hero.png",
+            "success": True,
+        }
+        srv._cli = mock_cli
+        srv._config = config
+
+        result = await srv.sprite_export(input_path="/path/to/hero.ase")
+        parsed = json.loads(result)
+        assert parsed["success"] is True
+        call_args = mock_cli.run_json_script.call_args[0][0]
+        assert "generated_assets" in call_args or str(
+            config.output_dir
+        ) in call_args
+
+    @pytest.mark.asyncio
+    async def test_spritesheet_export_default_paths(
+        self, config: AsepriteConfig
+    ) -> None:
+        from aseprite_mcp import server as srv
+
+        mock_cli = MagicMock(spec=AsepriteCLI)
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_cli.run_batch.return_value = mock_result
+        srv._cli = mock_cli
+        srv._config = config
+
+        result = await srv.spritesheet_export(input_path="/path/to/hero.ase")
+        parsed = json.loads(result)
+        assert parsed["success"] is True
+        assert "sheet" in parsed
+        assert "data" in parsed
 
     @pytest.mark.asyncio
     async def test_sprite_list_layers(self, config: AsepriteConfig) -> None:

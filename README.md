@@ -34,6 +34,14 @@ export ASEPRITE_PATH=/path/to/aseprite
 
 Or pass it as a CLI argument (`--aseprite-path`).
 
+Output directory for generated assets (sprites, PNGs, spritesheets):
+
+```bash
+export ASEPRITE_OUTPUT_DIR=generated_assets  # default: generated_assets/ in CWD
+```
+
+Or use `--output-dir /path/to/assets` CLI flag. The directory is auto-created on first use.
+
 Optional WebSocket settings:
 
 ```bash
@@ -62,18 +70,19 @@ aseprite-mcp --transport streamable-http --port 9090
 --port PORT                         HTTP port for streamable-http (default: 8080)
 --aseprite-path PATH                Path to Aseprite binary
 --ws-port PORT                      WebSocket port for bridge (default: 8765)
+--output-dir PATH                    Directory for generated assets (default: generated_assets/)
 ```
 
 ## MCP Tools
 
 | Tool | Description |
 |------|-------------|
-| `sprite_create` | Create a new sprite with given dimensions and color mode |
-| `sprite_export` | Export a sprite to PNG, GIF, etc. |
+| `sprite_create` | Create a new sprite (saves to `output_dir` by default) |
+| `sprite_export` | Export a sprite to PNG, GIF, etc. (saves to `output_dir` by default) |
 | `sprite_info` | Get metadata (dimensions, layers, tags, frames, palette) |
 | `sprite_list_layers` | List all layers in a sprite |
 | `sprite_list_tags` | List all frame tags in a sprite |
-| `spritesheet_export` | Export as spritesheet with JSON atlas |
+| `spritesheet_export` | Export as spritesheet with JSON atlas (saves to `output_dir` by default) |
 | `script_execute` | Run a custom Lua script |
 | `ws_connect` | Launch Aseprite with WebSocket bridge |
 | `draw_pixels` | Draw pixels on active sprite via WebSocket |

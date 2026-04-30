@@ -14,21 +14,23 @@ FROM base AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
-COPY pyproject.toml uv.lock ./
+COPY . .
 RUN uv export --frozen --no-dev --no-emit-project -o requirements.txt \
     && uv pip install --system --no-cache -r requirements.txt \
     && pip install --no-cache-dir .
 
 FROM base AS runtime
 
-WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
 COPY --from=builder /usr/local/bin/aseprite-mcp /usr/local/bin/aseprite-mcp
-COPY . .
+COPY --from=builder /app /app
+
+WORKDIR /app
 
 ENV ASEPRITE_PATH=/usr/bin/aseprite
 ENV ASEPRITE_WS_HOST=0.0.0.0
 ENV ASEPRITE_WS_PORT=8765
+ENV ASEPRITE_OUTPUT_DIR=/app/generated_assets
 ENV DISPLAY=:99
 
 EXPOSE 8080 8765

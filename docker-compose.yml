@@ -5,7 +5,10 @@ services:
       - ASEPRITE_PATH=/usr/bin/aseprite
       - ASEPRITE_WS_HOST=0.0.0.0
       - ASEPRITE_WS_PORT=8765
+      - ASEPRITE_OUTPUT_DIR=/app/generated_assets
     ports:
       - "8080:8080"
       - "8765:8765"
+    volumes:
+      - ./generated_assets:/app/generated_assets
     command: http 8080

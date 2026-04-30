@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
-import os
+from datetime import datetime
+from pathlib import Path
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
@@ -66,7 +67,7 @@ async def sprite_create(
         width: Sprite width in pixels (1-4096)
         height: Sprite height in pixels (1-4096)
         color_mode: Color mode - "rgb", "grayscale", or "indexed"
-        output_path: Path to save the sprite (.ase). If empty, uses a temp path.
+        output_path: Path to save the sprite (.ase). If empty, saves to output_dir.
     """
     try:
         validate_dimensions(width, height)
@@ -74,14 +75,10 @@ async def sprite_create(
     except ValueError as e:
         return f"Error: {e}"
 
-    import tempfile
-
     if not output_path:
-        _get_config().ensure_tmp_dir()
-        fd, output_path = tempfile.mkstemp(
-            suffix=".ase", dir=str(_get_config().tmp_dir)
-        )
-        os.close(fd)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"sprite_{width}x{height}_{color_mode}_{timestamp}.ase"
+        output_path = str(_get_config().resolve_output_path(filename))
 
     script = create_sprite_script(width, height, color_mode, output_path)
     params: dict[str, str] = {"output": output_path}
@@ -97,18 +94,25 @@ async def sprite_create(
 
 @mcp.tool()
 async def sprite_export(
-    input_path: str, output_path: str
+    input_path: str, output_path: str = ""
 ) -> str:
     """Export a sprite to another format (PNG, GIF, etc.).
 
     Args:
         input_path: Path to the source sprite file
-        output_path: Path for the exported file (extension determines format)
+        output_path: Path for the exported file (extension determines format).
+            If empty, saves to output_dir with PNG format.
     """
     try:
         validate_sprite_path(input_path)
     except ValueError as e:
         return f"Error: {e}"
+
+    if not output_path:
+        stem = Path(input_path).stem
+        filename = f"{stem}.png"
+        output_path = str(_get_config().resolve_output_path(filename))
+
     script = export_sprite_script(input_path, output_path)
 
     try:
@@ -181,8 +185,10 @@ async def spritesheet_export(
 
     Args:
         input_path: Path to the sprite file
-        sheet_path: Output PNG path for the spritesheet
-        data_path: Output JSON path for atlas metadata
+        sheet_path: Output PNG path for the spritesheet.
+            If empty, saves to output_dir.
+        data_path: Output JSON path for atlas metadata.
+            If empty, saves to output_dir.
         sheet_type: Layout algorithm - "horizontal", "vertical",
             "rows", "columns", "packed"
         border_padding: Padding on texture borders
@@ -190,14 +196,17 @@ async def spritesheet_export(
         inner_padding: Padding inside each frame
         trim: Trim individual frames
     """
-    from pathlib import Path
+    stem = Path(input_path).stem
+    config = _get_config()
 
-    sp = sheet_path or str(Path(input_path).with_suffix(".png"))
-    dp = data_path or str(Path(input_path).with_suffix(".json"))
+    if not sheet_path:
+        sheet_path = str(config.resolve_output_path(f"{stem}_sheet.png"))
+    if not data_path:
+        data_path = str(config.resolve_output_path(f"{stem}_atlas.json"))
 
     args = [
-        "--sheet", sp,
-        "--data", dp,
+        "--sheet", sheet_path,
+        "--data", data_path,
         "--sheet-type", sheet_type,
         "--border-padding", str(border_padding),
         "--shape-padding", str(shape_padding),
@@ -213,8 +222,8 @@ async def spritesheet_export(
         if result.returncode != 0:
             return f"Error: {result.stderr.decode(errors='replace')}"
         return json.dumps({
-            "sheet": sp,
-            "data": dp,
+            "sheet": sheet_path,
+            "data": data_path,
             "success": True,
         })
     except AsepriteCLIError as e:
