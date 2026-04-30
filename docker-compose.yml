@@ -1,0 +1,11 @@
+services:
+  aseprite-mcp:
+    build: .
+    environment:
+      - ASEPRITE_PATH=/usr/bin/aseprite
+      - ASEPRITE_WS_HOST=0.0.0.0
+      - ASEPRITE_WS_PORT=8765
+    ports:
+      - "8080:8080"
+      - "8765:8765"
+    command: http 8080

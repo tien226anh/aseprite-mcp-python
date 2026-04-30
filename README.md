@@ -121,6 +121,49 @@ Or if installed globally:
 }
 ```
 
+## Docker
+
+A pre-built Docker image with Aseprite and Xvfb (for WebSocket mode) is included.
+
+### Build
+
+```bash
+docker build -t aseprite-mcp .
+```
+
+### Run (STDIO mode)
+
+```bash
+docker run --rm -i aseprite-mcp stdio
+```
+
+### Run (HTTP mode)
+
+```bash
+docker run --rm -p 8080:8080 -p 8765:8765 aseprite-mcp http 8080
+```
+
+### Claude Desktop with Docker
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "aseprite-mcp", "stdio"]
+    }
+  }
+}
+```
+
+### Docker Compose
+
+```bash
+docker compose up
+```
+
+This starts the MCP server in HTTP mode on port 8080 with WebSocket on 8765.
+
 ## Development
 
 ```bash
