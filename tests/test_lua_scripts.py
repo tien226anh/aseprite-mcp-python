@@ -17,17 +17,16 @@ class TestCreateSpriteScript:
     def test_default_rgb(self) -> None:
         script = create_sprite_script(32, 32)
         assert "Sprite(32, 32" in script
-        assert "SpriteColorMode.RGB" in script
-        assert "app.params.output" in script
+        assert "ColorMode.RGB" in script
         assert "app.exit()" in script
 
     def test_grayscale(self) -> None:
         script = create_sprite_script(64, 32, color_mode="grayscale")
-        assert "SpriteColorMode.GRAYSCALE" in script
+        assert "ColorMode.GRAYSCALE" in script
 
     def test_indexed(self) -> None:
         script = create_sprite_script(16, 16, color_mode="indexed")
-        assert "SpriteColorMode.INDEXED" in script
+        assert "ColorMode.INDEXED" in script
 
     def test_contains_json_output(self) -> None:
         script = create_sprite_script(32, 32)

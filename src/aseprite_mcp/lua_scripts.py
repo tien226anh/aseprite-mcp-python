@@ -11,10 +11,9 @@ def create_sprite_script(
 ) -> str:
     mode_map = {"rgb": "RGB", "grayscale": "GRAYSCALE", "indexed": "INDEXED"}
     mode_str = mode_map.get(color_mode.lower(), "RGB")
-    return f"""local sprite = Sprite({width}, {height}, SpriteColorMode.{mode_str})
-if app.params.output then
-  sprite:saveAs(app.params.output)
-end
+    save_line = f'\nsprite:saveAs("{_lua_escape(output_path)}")' if output_path else ""
+    return f"""local sprite = Sprite({width}, {height}, ColorMode.{mode_str})
+{save_line}
 print("JSON_START" .. json.encode({{
   width = sprite.width,
   height = sprite.height,
@@ -37,7 +36,8 @@ for i, layer in ipairs(sprite.layers) do
   layers[i] = layer.name
 end
 local tags = {{}}
-for i, tag in ipairs(sprite.tags) do
+for i = 1, #sprite.tags do
+  local tag = sprite.tags[i]
   tags[i] = {{
     name = tag.name,
     from = tag.fromFrame.frameNumber,
@@ -49,7 +49,8 @@ for i = 1, #sprite.frames do
   frames[i] = {{ duration = sprite.frames[i].duration }}
 end
 local palettes = {{}}
-for i, pal in ipairs(sprite.palettes) do
+for i = 1, #sprite.palettes do
+  local pal = sprite.palettes[i]
   local colors = {{}}
   for j = 0, #pal - 1 do
     local c = pal:getColor(j)
@@ -57,11 +58,13 @@ for i, pal in ipairs(sprite.palettes) do
   end
   palettes[i] = {{ frame = pal.frame, colors = colors }}
 end
+local cmNames = {{ [0] = "rgb", "grayscale", "indexed" }}
+local cmName = cmNames[sprite.colorMode] or "unknown"
 print("JSON_START" .. json.encode({{
   filename = sprite.filename,
   width = sprite.width,
   height = sprite.height,
-  colorMode = sprite.colorMode,
+  colorMode = cmName,
   frames = #sprite.frames,
   layers = layers,
   tags = tags,
