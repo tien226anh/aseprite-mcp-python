@@ -13,12 +13,12 @@ start_xvfb() {
 
 case "$mode" in
     stdio)
-        exec uv run aseprite-mcp --transport stdio
+        exec python -m aseprite_mcp --transport stdio
         ;;
     http)
         port="${2:-8080}"
         start_xvfb
-        exec uv run aseprite-mcp --transport streamable-http --port "$port"
+        exec python -m aseprite_mcp --transport streamable-http --port "$port"
         ;;
     *)
         echo "Usage: docker run <image> [stdio|http [port]]"

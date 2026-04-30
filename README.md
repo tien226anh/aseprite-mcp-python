@@ -88,9 +88,39 @@ aseprite-mcp --transport streamable-http --port 9090
 
 - `pixel_art_asset_gen` - Template for LLM-guided pixel art generation
 
-## Claude Desktop Configuration
+## Integration Guide
 
-Add to your `claude_desktop_config.json`:
+### Quick Reference
+
+| Tool | Config Key | Config Path | stdio | HTTP | Notes |
+|------|-----------|-------------|:-----:|:----:|-------|
+| Claude Desktop | `mcpServers` | `~/Library/Application Support/Claude/claude_desktop_config.json` | Y | N | Must restart after config change |
+| VS Code Copilot | `servers` | `.vscode/mcp.json` | Y | Y | Agent mode required; VS Code 1.99+ |
+| Claude Code | `mcpServers` | `.mcp.json` or `claude mcp add` | Y | Y | 3 scopes: local/project/user |
+| Cursor | `mcpServers` | `~/.cursor/mcp.json` | Y | SSE | Global config only |
+| opencode | `mcp` | `opencode.json` | Y | Y | Uses `type: "local"/"remote"`, `command` as array |
+| Windsurf | `mcpServers` | `~/.codeium/windsurf/mcp_config.json` | Y | Y | `${env:VAR}` interpolation; max 100 tools |
+| Cline | `mcpServers` | VS Code global state (UI) | Y | SSE | Configured via extension UI |
+| Continue | `mcpServers` | `~/.continue/config.json` | Y | SSE | Inside existing config.json |
+| Zed | `context_servers` | Zed `settings.json` | Y | Y | **Different key name!** |
+
+Below are config snippets for each tool in three variants:
+
+- **Local (uv run)** — running from a source checkout
+- **Installed** — `aseprite-mcp` installed globally via `pip` or `uv tool`
+- **Docker** — running inside a container
+
+Replace `/path/to/aseprite-mcp-python` and `/path/to/aseprite` with your actual paths.
+
+---
+
+### Claude Desktop
+
+**Config file:** `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
+
+Claude Desktop only supports stdio transport. You must fully quit and restart the app after editing the config.
+
+**Local (uv run):**
 
 ```json
 {
@@ -99,14 +129,14 @@ Add to your `claude_desktop_config.json`:
       "command": "uv",
       "args": ["run", "--directory", "/path/to/aseprite-mcp-python", "aseprite-mcp"],
       "env": {
-        "ASEPRITE_PATH": "/path/to/aseprite"
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
       }
     }
   }
 }
 ```
 
-Or if installed globally:
+**Installed:**
 
 ```json
 {
@@ -121,29 +151,7 @@ Or if installed globally:
 }
 ```
 
-## Docker
-
-A pre-built Docker image with Aseprite and Xvfb (for WebSocket mode) is included.
-
-### Build
-
-```bash
-docker build -t aseprite-mcp .
-```
-
-### Run (STDIO mode)
-
-```bash
-docker run --rm -i aseprite-mcp stdio
-```
-
-### Run (HTTP mode)
-
-```bash
-docker run --rm -p 8080:8080 -p 8765:8765 aseprite-mcp http 8080
-```
-
-### Claude Desktop with Docker
+**Docker:**
 
 ```json
 {
@@ -156,13 +164,518 @@ docker run --rm -p 8080:8080 -p 8765:8765 aseprite-mcp http 8080
 }
 ```
 
-### Docker Compose
+---
 
-```bash
-docker compose up
+### VS Code (GitHub Copilot)
+
+**Config file:** `.vscode/mcp.json` in your workspace root
+
+Requires VS Code 1.99+ and Agent mode in Copilot Chat. Organization admins must enable the "MCP servers in Copilot" policy for Business/Enterprise users.
+
+**Local (uv run):**
+
+```json
+{
+  "servers": {
+    "aseprite": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/aseprite-mcp-python", "aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
 ```
 
-This starts the MCP server in HTTP mode on port 8080 with WebSocket on 8765.
+**Installed:**
+
+```json
+{
+  "servers": {
+    "aseprite": {
+      "command": "aseprite-mcp",
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Docker:**
+
+```json
+{
+  "servers": {
+    "aseprite": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "aseprite-mcp", "stdio"]
+    }
+  }
+}
+```
+
+**HTTP (connect to a running server):**
+
+Start the server first: `docker run --rm -p 8080:8080 -p 8765:8765 aseprite-mcp http 8080`
+
+Then in VS Code `settings.json`:
+
+```json
+{
+  "servers": {
+    "aseprite": {
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
+```
+
+---
+
+### Claude Code (CLI)
+
+**Config file:** `.mcp.json` in project root, or `~/.claude.json` for user scope
+
+You can also use the CLI:
+
+```bash
+# stdio (from source)
+claude mcp add --transport stdio aseprite -- uv run --directory /path/to/aseprite-mcp-python aseprite-mcp
+
+# stdio (installed)
+claude mcp add --transport stdio aseprite -- aseprite-mcp
+
+# HTTP
+claude mcp add --transport http aseprite http://localhost:8080/mcp
+```
+
+Or manually in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/aseprite-mcp-python", "aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Docker:**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "type": "stdio",
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "aseprite-mcp", "stdio"]
+    }
+  }
+}
+```
+
+**HTTP:**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "type": "http",
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
+```
+
+---
+
+### Cursor
+
+**Config file:** `~/.cursor/mcp.json`
+
+Cursor supports stdio and SSE transports. Config is global (not per-project).
+
+**Local (uv run):**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/aseprite-mcp-python", "aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Installed:**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "aseprite-mcp",
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Docker:**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "aseprite-mcp", "stdio"]
+    }
+  }
+}
+```
+
+**SSE/HTTP (remote):**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
+```
+
+---
+
+### opencode
+
+**Config file:** `opencode.json` in project root
+
+opencode uses a different schema: `type: "local"` for stdio, `type: "remote"` for HTTP, and `command` as an array (not `command` string + `args` array). Environment variables use `{env:VAR}` interpolation.
+
+**Local (uv run):**
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "aseprite": {
+      "type": "local",
+      "command": ["uv", "run", "--directory", "/path/to/aseprite-mcp-python", "aseprite-mcp"],
+      "enabled": true,
+      "environment": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Installed:**
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "aseprite": {
+      "type": "local",
+      "command": ["aseprite-mcp"],
+      "enabled": true,
+      "environment": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Docker:**
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "aseprite": {
+      "type": "local",
+      "command": ["docker", "run", "--rm", "-i", "aseprite-mcp", "stdio"],
+      "enabled": true
+    }
+  }
+}
+```
+
+**HTTP (remote):**
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "aseprite": {
+      "type": "remote",
+      "url": "http://localhost:8080/mcp",
+      "enabled": true
+    }
+  }
+}
+```
+
+---
+
+### Windsurf
+
+**Config file:** `~/.codeium/windsurf/mcp_config.json`
+
+Windsurf supports `${env:VAR}` and `${file:/path}` interpolation in commands and args. Remote servers use `serverUrl` (not `url`). Max 100 MCP tools total.
+
+**Local (uv run):**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/aseprite-mcp-python", "aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Installed:**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "aseprite-mcp",
+      "env": {
+        "ASEPRITE_PATH": "${env:ASEPRITE_PATH}"
+      }
+    }
+  }
+}
+```
+
+**Docker:**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "aseprite-mcp", "stdio"]
+    }
+  }
+}
+```
+
+**HTTP (remote):**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "serverUrl": "http://localhost:8080/mcp"
+    }
+  }
+}
+```
+
+---
+
+### Cline (VS Code Extension)
+
+**Config:** Managed through the Cline extension UI — click the MCP icon in the sidebar, then "Edit MCP Settings". Paste JSON directly into the settings.
+
+**Local (uv run):**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/aseprite-mcp-python", "aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Installed:**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "aseprite-mcp",
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Docker:**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "aseprite-mcp", "stdio"]
+    }
+  }
+}
+```
+
+---
+
+### Continue (VS Code / JetBrains Extension)
+
+**Config file:** `~/.continue/config.json`
+
+The `mcpServers` key goes inside the existing `config.json` alongside other Continue settings.
+
+**Local (uv run):**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/aseprite-mcp-python", "aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Installed:**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "aseprite-mcp",
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Docker:**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "aseprite-mcp", "stdio"]
+    }
+  }
+}
+```
+
+---
+
+### Zed Editor
+
+**Config file:** Zed `settings.json` (open via Settings → Edit Settings)
+
+Zed uses **`context_servers`** (not `mcpServers`). This is the only tool with a different top-level key.
+
+**Local (uv run):**
+
+```json
+{
+  "context_servers": {
+    "aseprite": {
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/aseprite-mcp-python", "aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Installed:**
+
+```json
+{
+  "context_servers": {
+    "aseprite": {
+      "command": "aseprite-mcp",
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Docker:**
+
+```json
+{
+  "context_servers": {
+    "aseprite": {
+      "command": "docker",
+      "args": ["run", "--rm", "-i", "aseprite-mcp", "stdio"]
+    }
+  }
+}
+```
+
+**HTTP (remote):**
+
+```json
+{
+  "context_servers": {
+    "aseprite": {
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
+```
+
+---
+
+### JetBrains AI
+
+JetBrains IDEs (IntelliJ, PyCharm, WebStorm, etc.) currently act as an **MCP server** (exposing IDE capabilities to external clients), not an MCP consumer. To use Aseprite MCP with a JetBrains AI assistant, connect JetBrains to an external client (like Claude Desktop or Copilot) that has the Aseprite MCP server configured.
+
+Alternatively, use the JetBrains terminal to run:
+
+```bash
+aseprite-mcp --transport stdio
+```
+
+and pipe it to your preferred AI tool.
 
 ## Development
 

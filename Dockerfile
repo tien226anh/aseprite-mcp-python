@@ -9,13 +9,22 @@ ARG ASEPRITE_DEB=aseprite_1.3.17.2_amd64.deb
 COPY ${ASEPRITE_DEB} /tmp/aseprite.deb
 RUN dpkg -i /tmp/aseprite.deb && rm /tmp/aseprite.deb
 
+FROM base AS builder
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv export --frozen --no-dev --no-emit-project -o requirements.txt \
+    && uv pip install --system --no-cache -r requirements.txt \
+    && pip install --no-cache-dir .
+
 FROM base AS runtime
 
 WORKDIR /app
-
+COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
+COPY --from=builder /usr/local/bin/aseprite-mcp /usr/local/bin/aseprite-mcp
 COPY . .
-RUN pip install --no-cache-dir uv && uv sync --frozen --no-dev \
-    && rm -rf /root/.cache/uv
 
 ENV ASEPRITE_PATH=/usr/bin/aseprite
 ENV ASEPRITE_WS_HOST=0.0.0.0
