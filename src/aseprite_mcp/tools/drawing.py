@@ -9,8 +9,17 @@ from aseprite_mcp.tools._helpers import (
     _lua_escape,
     check_file,
     get_cli,
-    validate_hex_color,
+    validate_hex_color_alpha,
 )
+
+# ---------------------------------------------------------------------------
+# Cel position offset helper for putPixel-based drawing
+# ---------------------------------------------------------------------------
+
+_CEL_OFFSET_PREFIX = """
+local ox = cel.position.x
+local oy = cel.position.y
+"""
 
 # ---------------------------------------------------------------------------
 # Simple drawing tools (operate on the active cel)
@@ -19,31 +28,41 @@ from aseprite_mcp.tools._helpers import (
 
 @mcp.tool()
 async def draw_pixels(
-    filename: str, pixels: list[dict[str, Any]]
+    filename: str, pixels: list[dict[str, Any]], alpha: int = 255
 ) -> str:
     """Draw pixels on the canvas with specified colors.
 
     Args:
         filename: Path to the Aseprite file to modify
         pixels: List of pixel data, each containing:
-            {"x": int, "y": int, "color": str}
-            where color is a hex code like "#FF0000"
+            {"x": int, "y": int, "color": str, "alpha"?: int}
+            where color is a hex code like "#FF0000" or "#FF000080",
+            and alpha is an optional per-pixel alpha (0-255, overrides tool alpha)
+        alpha: Default alpha for all pixels (0-255, default: 255)
     """
     err = check_file(filename)
     if err:
         return err
 
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
+
     pixel_lines: list[str] = []
     for pixel in pixels:
         x = pixel.get("x", 0)
         y = pixel.get("y", 0)
-        rgb = validate_hex_color(pixel.get("color", "#000000"))
-        if rgb is None:
+        rgba = validate_hex_color_alpha(pixel.get("color", "#000000"))
+        if rgba is None:
             return f"Invalid color value: {pixel.get('color')}"
-        r, g, b = rgb
-        pixel_lines.append(
-            f"        img:putPixel({x}, {y}, Color({r}, {g}, {b}, 255))"
+        r, g, b, _default_a = rgba
+        pixel_alpha = pixel.get("alpha", alpha) if "alpha" in pixel else alpha
+        if not (0 <= pixel_alpha <= 255):
+            return f"Error: per-pixel alpha must be 0-255, got {pixel_alpha}"
+        line = (
+            f"        img:putPixel({x} - ox, {y} - oy, "
+            f"Color({r}, {g}, {b}, {pixel_alpha}))"
         )
+        pixel_lines.append(line)
 
     pixel_code = "\n".join(pixel_lines)
 
@@ -60,6 +79,8 @@ async def draw_pixels(
             if not cel then return "No active cel and couldn't create one" end
         end
         local img = cel.image
+        local ox = cel.position.x
+        local oy = cel.position.y
 {pixel_code}
     end)
 
@@ -82,6 +103,7 @@ async def draw_line(
     y2: int,
     color: str = "#000000",
     thickness: int = 1,
+    alpha: int = 255,
 ) -> str:
     """Draw a line on the canvas.
 
@@ -91,32 +113,38 @@ async def draw_line(
         y1: Starting y coordinate
         x2: Ending x coordinate
         y2: Ending y coordinate
-        color: Hex color code (default: "#000000")
+        color: Hex color code (default: "#000000"), supports #RRGGBBAA
         thickness: Line thickness in pixels (default: 1)
+        alpha: Alpha value 0-255 (default: 255)
     """
     err = check_file(filename)
     if err:
         return err
 
-    rgb = validate_hex_color(color)
-    if rgb is None:
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
+
+    rgba = validate_hex_color_alpha(color)
+    if rgba is None:
         return f"Invalid color value: {color}"
-    r, g, b = rgb
+    r, g, b, _default_a = rgba
+    # Alpha param always takes priority over hex-embedded alpha
+    a = alpha
 
     script = f"""
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
 
-    local function put_thick(img, x, y, color, size)
+    local function put_thick(img, x, y, color, size, ox, oy)
         local r = math.max(0, math.floor(size / 2))
-        for oy = -r, r do
-            for ox = -r, r do
-                img:putPixel(x + ox, y + oy, color)
+        for dy = -r, r do
+            for dx = -r, r do
+                img:putPixel(x + dx - ox, y + dy - oy, color)
             end
         end
     end
 
-    local function draw_line(img, x0, y0, x1, y1, color, size)
+    local function draw_line(img, x0, y0, x1, y1, color, size, ox, oy)
         local dx = math.abs(x1 - x0)
         local sx = x0 < x1 and 1 or -1
         local dy = -math.abs(y1 - y0)
@@ -124,9 +152,9 @@ async def draw_line(
         local err = dx + dy
         while true do
             if size > 1 then
-                put_thick(img, x0, y0, color, size)
+                put_thick(img, x0, y0, color, size, ox, oy)
             else
-                img:putPixel(x0, y0, color)
+                img:putPixel(x0 - ox, y0 - oy, color)
             end
             if x0 == x1 and y0 == y1 then break end
             local e2 = 2 * err
@@ -144,8 +172,10 @@ async def draw_line(
             if not cel then return "No active cel and couldn't create one" end
         end
         local img = cel.image
-        local color = Color({r}, {g}, {b}, 255)
-        draw_line(img, {x1}, {y1}, {x2}, {y2}, color, {thickness})
+        local ox = cel.position.x
+        local oy = cel.position.y
+        local color = Color({r}, {g}, {b}, {a})
+        draw_line(img, {x1}, {y1}, {x2}, {y2}, color, {thickness}, ox, oy)
     end)
 
     spr:saveAs(spr.filename)
@@ -167,6 +197,7 @@ async def draw_rectangle(
     height: int,
     color: str = "#000000",
     fill: bool = False,
+    alpha: int = 255,
 ) -> str:
     """Draw a rectangle on the canvas.
 
@@ -176,20 +207,26 @@ async def draw_rectangle(
         y: Top-left y coordinate
         width: Width of the rectangle
         height: Height of the rectangle
-        color: Hex color code (default: "#000000")
+        color: Hex color code (default: "#000000"), supports #RRGGBBAA
         fill: Whether to fill the rectangle (default: False)
+        alpha: Alpha value 0-255 (default: 255)
     """
     err = check_file(filename)
     if err:
         return err
 
-    rgb = validate_hex_color(color)
-    if rgb is None:
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
+
+    rgba = validate_hex_color_alpha(color)
+    if rgba is None:
         return f"Invalid color value: {color}"
-    r, g, b = rgb
+    r, g, b, _default_a = rgba
+    a = alpha
 
     tool_name = "filled_rectangle" if fill else "rectangle"
 
+    # useTool uses sprite-global coords, no cel offset needed
     script = f"""
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
@@ -203,7 +240,7 @@ async def draw_rectangle(
             if not cel then return "No active cel and couldn't create one" end
         end
 
-        local color = Color({r}, {g}, {b}, 255)
+        local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="{tool_name}",
             color=color,
@@ -223,7 +260,7 @@ async def draw_rectangle(
 
 @mcp.tool()
 async def fill_area(
-    filename: str, x: int, y: int, color: str = "#000000"
+    filename: str, x: int, y: int, color: str = "#000000", alpha: int = 255
 ) -> str:
     """Fill an area with color using the paint bucket tool.
 
@@ -231,17 +268,23 @@ async def fill_area(
         filename: Path to the Aseprite file to modify
         x: X coordinate to fill from
         y: Y coordinate to fill from
-        color: Hex color code (default: "#000000")
+        color: Hex color code (default: "#000000"), supports #RRGGBBAA
+        alpha: Alpha value 0-255 (default: 255)
     """
     err = check_file(filename)
     if err:
         return err
 
-    rgb = validate_hex_color(color)
-    if rgb is None:
-        return f"Invalid color value: {color}"
-    r, g, b = rgb
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
 
+    rgba = validate_hex_color_alpha(color)
+    if rgba is None:
+        return f"Invalid color value: {color}"
+    r, g, b, _default_a = rgba
+    a = alpha
+
+    # useTool uses sprite-global coords, no cel offset needed
     script = f"""
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
@@ -255,7 +298,7 @@ async def fill_area(
             if not cel then return "No active cel and couldn't create one" end
         end
 
-        local color = Color({r}, {g}, {b}, 255)
+        local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="paint_bucket",
             color=color,
@@ -281,6 +324,7 @@ async def draw_circle(
     radius: int,
     color: str = "#000000",
     fill: bool = False,
+    alpha: int = 255,
 ) -> str:
     """Draw a circle on the canvas.
 
@@ -289,20 +333,26 @@ async def draw_circle(
         center_x: X coordinate of circle center
         center_y: Y coordinate of circle center
         radius: Radius of the circle in pixels
-        color: Hex color code (default: "#000000")
+        color: Hex color code (default: "#000000"), supports #RRGGBBAA
         fill: Whether to fill the circle (default: False)
+        alpha: Alpha value 0-255 (default: 255)
     """
     err = check_file(filename)
     if err:
         return err
 
-    rgb = validate_hex_color(color)
-    if rgb is None:
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
+
+    rgba = validate_hex_color_alpha(color)
+    if rgba is None:
         return f"Invalid color value: {color}"
-    r, g, b = rgb
+    r, g, b, _default_a = rgba
+    a = alpha
 
     tool_name = "filled_ellipse" if fill else "ellipse"
 
+    # useTool uses sprite-global coords, no cel offset needed
     script = f"""
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
@@ -316,7 +366,7 @@ async def draw_circle(
             if not cel then return "No active cel and couldn't create one" end
         end
 
-        local color = Color({r}, {g}, {b}, 255)
+        local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="{tool_name}",
             color=color,
@@ -337,6 +387,166 @@ async def draw_circle(
     return f"Failed to draw circle: {output}"
 
 
+@mcp.tool()
+async def draw_ellipse(
+    filename: str,
+    center_x: int,
+    center_y: int,
+    radius_x: int,
+    radius_y: int,
+    color: str = "#000000",
+    fill: bool = False,
+    alpha: int = 255,
+) -> str:
+    """Draw an ellipse with separate X/Y radii.
+
+    Args:
+        filename: Path to the Aseprite file to modify
+        center_x: X coordinate of ellipse center
+        center_y: Y coordinate of ellipse center
+        radius_x: Horizontal radius in pixels
+        radius_y: Vertical radius in pixels
+        color: Hex color code (default: "#000000"), supports #RRGGBBAA
+        fill: Whether to fill the ellipse (default: False)
+        alpha: Alpha value 0-255 (default: 255)
+    """
+    err = check_file(filename)
+    if err:
+        return err
+
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
+
+    rgba = validate_hex_color_alpha(color)
+    if rgba is None:
+        return f"Invalid color value: {color}"
+    r, g, b, _default_a = rgba
+    a = alpha
+
+    tool_name = "filled_ellipse" if fill else "ellipse"
+
+    # useTool uses sprite-global coords, no cel offset needed
+    script = f"""
+    local spr = app.activeSprite
+    if not spr then return "No active sprite" end
+
+    app.transaction(function()
+        local cel = app.activeCel
+        if not cel then
+            app.activeLayer = spr.layers[1]
+            app.activeFrame = spr.frames[1]
+            cel = app.activeCel
+            if not cel then return "No active cel and couldn't create one" end
+        end
+
+        local color = Color({r}, {g}, {b}, {a})
+        app.useTool({{
+            tool="{tool_name}",
+            color=color,
+            points={{
+                Point({center_x - radius_x}, {center_y - radius_y}),
+                Point({center_x + radius_x}, {center_y + radius_y})
+            }}
+        }})
+    end)
+
+    spr:saveAs(spr.filename)
+    return "Ellipse drawn successfully"
+    """
+
+    success, output = get_cli().execute_lua_script(script, filename)
+    if success:
+        return f"Ellipse drawn successfully in {filename}"
+    return f"Failed to draw ellipse: {output}"
+
+
+@mcp.tool()
+async def draw_text(
+    filename: str,
+    layer_name: str,
+    frame_index: int,
+    x: int,
+    y: int,
+    text: str,
+    color: str = "#000000",
+    alpha: int = 255,
+    create_if_missing: bool = True,
+) -> str:
+    """Render text onto a sprite.
+
+    Args:
+        filename: Path to the Aseprite file to modify
+        layer_name: Layer name to target
+        frame_index: Frame index starting at 1
+        x: X coordinate for text position
+        y: Y coordinate for text position
+        text: Text string to render
+        color: Hex color code (default: "#000000"), supports #RRGGBBAA
+        alpha: Alpha value 0-255 (default: 255)
+        create_if_missing: Create cel if it does not exist (default: True)
+    """
+    err = check_file(filename)
+    if err:
+        return err
+
+    if not text:
+        return "Error: text must not be empty"
+
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
+
+    rgba = validate_hex_color_alpha(color)
+    if rgba is None:
+        return f"Invalid color value: {color}"
+    r, g, b, _default_a = rgba
+    a = alpha
+
+    safe_layer_name = _lua_escape(layer_name)
+    esc_text = _lua_escape(text)
+    create_flag = "true" if create_if_missing else "false"
+
+    script = f"""
+    local spr = app.activeSprite
+    if not spr then return "No active sprite" end
+
+    local idx = {frame_index}
+    if idx < 1 or idx > #spr.frames then return "Frame index out of range" end
+
+    local target = nil
+    for _, layer in ipairs(spr.layers) do
+        if layer.name == "{safe_layer_name}" then target = layer break end
+    end
+    if not target then return "Layer not found" end
+
+    app.transaction(function()
+        app.activeLayer = target
+        app.activeFrame = spr.frames[idx]
+        local cel = target:cel(spr.frames[idx])
+        if not cel and {create_flag} then
+            local img = Image(spr.width, spr.height, spr.colorMode)
+            cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
+        end
+        if not cel then return end
+
+        local color = Color({r}, {g}, {b}, {a})
+        app.useTool({{
+            tool="text",
+            color=color,
+            points={{Point({x}, {y})}},
+            text="{esc_text}"
+        }})
+    end)
+
+    spr:saveAs(spr.filename)
+    return "Text drawn successfully"
+    """
+
+    success, output = get_cli().execute_lua_script(script, filename)
+    if success:
+        return f"Text drawn on '{layer_name}' frame {frame_index} in {filename}"
+    return f"Failed to draw text: {output}"
+
+
 # ---------------------------------------------------------------------------
 # Layer/frame-targeted drawing tools
 # ---------------------------------------------------------------------------
@@ -348,6 +558,7 @@ async def draw_pixels_at(
     layer_name: str,
     frame_index: int,
     pixels: list[dict[str, Any]],
+    alpha: int = 255,
     create_if_missing: bool = True,
 ) -> str:
     """Draw pixels on a specific layer/frame.
@@ -356,12 +567,16 @@ async def draw_pixels_at(
         filename: Path to the Aseprite file to modify
         layer_name: Layer name to target
         frame_index: Frame index starting at 1
-        pixels: List of pixel data with x/y/color
+        pixels: List of pixel data with x/y/color, optional per-pixel alpha
+        alpha: Default alpha for all pixels (0-255, default: 255)
         create_if_missing: Create cel if it does not exist (default: True)
     """
     err = check_file(filename)
     if err:
         return err
+
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
 
     safe_layer_name = _lua_escape(layer_name)
     create_flag = "true" if create_if_missing else "false"
@@ -370,13 +585,18 @@ async def draw_pixels_at(
     for pixel in pixels:
         x = pixel.get("x", 0)
         y = pixel.get("y", 0)
-        rgb = validate_hex_color(pixel.get("color", "#000000"))
-        if rgb is None:
+        rgba = validate_hex_color_alpha(pixel.get("color", "#000000"))
+        if rgba is None:
             return f"Invalid color value: {pixel.get('color')}"
-        r, g, b = rgb
-        pixel_lines.append(
-            f"        img:putPixel({x}, {y}, Color({r}, {g}, {b}, 255))"
+        r, g, b, _default_a = rgba
+        pixel_alpha = pixel.get("alpha", alpha) if "alpha" in pixel else alpha
+        if not (0 <= pixel_alpha <= 255):
+            return f"Error: per-pixel alpha must be 0-255, got {pixel_alpha}"
+        line = (
+            f"        img:putPixel({x} - ox, {y} - oy, "
+            f"Color({r}, {g}, {b}, {pixel_alpha}))"
         )
+        pixel_lines.append(line)
 
     pixel_code = "\n".join(pixel_lines)
 
@@ -403,6 +623,8 @@ async def draw_pixels_at(
         end
         if not cel then return end
         local img = cel.image
+        local ox = cel.position.x
+        local oy = cel.position.y
 {pixel_code}
     end)
 
@@ -427,6 +649,7 @@ async def draw_line_at(
     y2: int,
     color: str = "#000000",
     thickness: int = 1,
+    alpha: int = 255,
     create_if_missing: bool = True,
 ) -> str:
     """Draw a line on a specific layer/frame.
@@ -439,18 +662,23 @@ async def draw_line_at(
         y1: Starting y coordinate
         x2: Ending x coordinate
         y2: Ending y coordinate
-        color: Hex color code (default: "#000000")
+        color: Hex color code (default: "#000000"), supports #RRGGBBAA
         thickness: Line thickness in pixels (default: 1)
+        alpha: Alpha value 0-255 (default: 255)
         create_if_missing: Create cel if it does not exist (default: True)
     """
     err = check_file(filename)
     if err:
         return err
 
-    rgb = validate_hex_color(color)
-    if rgb is None:
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
+
+    rgba = validate_hex_color_alpha(color)
+    if rgba is None:
         return f"Invalid color value: {color}"
-    r, g, b = rgb
+    r, g, b, _default_a = rgba
+    a = alpha
     safe_layer_name = _lua_escape(layer_name)
     create_flag = "true" if create_if_missing else "false"
 
@@ -458,16 +686,16 @@ async def draw_line_at(
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
 
-    local function put_thick(img, x, y, color, size)
+    local function put_thick(img, x, y, color, size, ox, oy)
         local r = math.max(0, math.floor(size / 2))
-        for oy = -r, r do
-            for ox = -r, r do
-                img:putPixel(x + ox, y + oy, color)
+        for dy = -r, r do
+            for dx = -r, r do
+                img:putPixel(x + dx - ox, y + dy - oy, color)
             end
         end
     end
 
-    local function draw_line(img, x0, y0, x1, y1, color, size)
+    local function draw_line(img, x0, y0, x1, y1, color, size, ox, oy)
         local dx = math.abs(x1 - x0)
         local sx = x0 < x1 and 1 or -1
         local dy = -math.abs(y1 - y0)
@@ -475,9 +703,9 @@ async def draw_line_at(
         local err = dx + dy
         while true do
             if size > 1 then
-                put_thick(img, x0, y0, color, size)
+                put_thick(img, x0, y0, color, size, ox, oy)
             else
-                img:putPixel(x0, y0, color)
+                img:putPixel(x0 - ox, y0 - oy, color)
             end
             if x0 == x1 and y0 == y1 then break end
             local e2 = 2 * err
@@ -505,8 +733,10 @@ async def draw_line_at(
         end
         if not cel then return end
         local img = cel.image
-        local color = Color({r}, {g}, {b}, 255)
-        draw_line(img, {x1}, {y1}, {x2}, {y2}, color, {thickness})
+        local ox = cel.position.x
+        local oy = cel.position.y
+        local color = Color({r}, {g}, {b}, {a})
+        draw_line(img, {x1}, {y1}, {x2}, {y2}, color, {thickness}, ox, oy)
     end)
 
     spr:saveAs(spr.filename)
@@ -530,6 +760,7 @@ async def draw_rectangle_at(
     height: int,
     color: str = "#000000",
     fill: bool = False,
+    alpha: int = 255,
     create_if_missing: bool = True,
 ) -> str:
     """Draw a rectangle on a specific layer/frame.
@@ -542,22 +773,28 @@ async def draw_rectangle_at(
         y: Top-left y coordinate
         width: Width of the rectangle
         height: Height of the rectangle
-        color: Hex color code (default: "#000000")
+        color: Hex color code (default: "#000000"), supports #RRGGBBAA
         fill: Whether to fill the rectangle (default: False)
+        alpha: Alpha value 0-255 (default: 255)
         create_if_missing: Create cel if it does not exist (default: True)
     """
     err = check_file(filename)
     if err:
         return err
 
-    rgb = validate_hex_color(color)
-    if rgb is None:
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
+
+    rgba = validate_hex_color_alpha(color)
+    if rgba is None:
         return f"Invalid color value: {color}"
-    r, g, b = rgb
+    r, g, b, _default_a = rgba
+    a = alpha
     safe_layer_name = _lua_escape(layer_name)
     create_flag = "true" if create_if_missing else "false"
     tool_name = "filled_rectangle" if fill else "rectangle"
 
+    # useTool uses sprite-global coords, no cel offset needed
     script = f"""
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
@@ -580,7 +817,7 @@ async def draw_rectangle_at(
             cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
         end
         if not cel then return end
-        local color = Color({r}, {g}, {b}, 255)
+        local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="{tool_name}",
             color=color,
@@ -608,6 +845,7 @@ async def draw_circle_at(
     radius: int,
     color: str = "#000000",
     fill: bool = False,
+    alpha: int = 255,
     create_if_missing: bool = True,
 ) -> str:
     """Draw a circle on a specific layer/frame.
@@ -619,22 +857,28 @@ async def draw_circle_at(
         center_x: X coordinate of circle center
         center_y: Y coordinate of circle center
         radius: Radius of the circle in pixels
-        color: Hex color code (default: "#000000")
+        color: Hex color code (default: "#000000"), supports #RRGGBBAA
         fill: Whether to fill the circle (default: False)
+        alpha: Alpha value 0-255 (default: 255)
         create_if_missing: Create cel if it does not exist (default: True)
     """
     err = check_file(filename)
     if err:
         return err
 
-    rgb = validate_hex_color(color)
-    if rgb is None:
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
+
+    rgba = validate_hex_color_alpha(color)
+    if rgba is None:
         return f"Invalid color value: {color}"
-    r, g, b = rgb
+    r, g, b, _default_a = rgba
+    a = alpha
     safe_layer_name = _lua_escape(layer_name)
     create_flag = "true" if create_if_missing else "false"
     tool_name = "filled_ellipse" if fill else "ellipse"
 
+    # useTool uses sprite-global coords, no cel offset needed
     script = f"""
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
@@ -657,7 +901,7 @@ async def draw_circle_at(
             cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
         end
         if not cel then return end
-        local color = Color({r}, {g}, {b}, 255)
+        local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="{tool_name}",
             color=color,
@@ -686,6 +930,7 @@ async def fill_area_at(
     x: int,
     y: int,
     color: str = "#000000",
+    alpha: int = 255,
     create_if_missing: bool = True,
 ) -> str:
     """Fill an area on a specific layer/frame.
@@ -696,20 +941,26 @@ async def fill_area_at(
         frame_index: Frame index starting at 1
         x: X coordinate to fill from
         y: Y coordinate to fill from
-        color: Hex color code (default: "#000000")
+        color: Hex color code (default: "#000000"), supports #RRGGBBAA
+        alpha: Alpha value 0-255 (default: 255)
         create_if_missing: Create cel if it does not exist (default: True)
     """
     err = check_file(filename)
     if err:
         return err
 
-    rgb = validate_hex_color(color)
-    if rgb is None:
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
+
+    rgba = validate_hex_color_alpha(color)
+    if rgba is None:
         return f"Invalid color value: {color}"
-    r, g, b = rgb
+    r, g, b, _default_a = rgba
+    a = alpha
     safe_layer_name = _lua_escape(layer_name)
     create_flag = "true" if create_if_missing else "false"
 
+    # useTool uses sprite-global coords, no cel offset needed
     script = f"""
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
@@ -732,7 +983,7 @@ async def fill_area_at(
             cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
         end
         if not cel then return end
-        local color = Color({r}, {g}, {b}, 255)
+        local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="paint_bucket",
             color=color,
@@ -758,6 +1009,7 @@ async def draw_polygon(
     points: list[dict[str, int]],
     color: str = "#000000",
     fill: bool = False,
+    alpha: int = 255,
     create_if_missing: bool = True,
 ) -> str:
     """Draw a polygon on a specific layer/frame.
@@ -767,8 +1019,9 @@ async def draw_polygon(
         layer_name: Layer name to target
         frame_index: Frame index starting at 1
         points: List of vertex coordinates, each: {"x": int, "y": int} (min 3)
-        color: Hex color code (default: "#000000")
+        color: Hex color code (default: "#000000"), supports #RRGGBBAA
         fill: Whether to fill the polygon (default: False)
+        alpha: Alpha value 0-255 (default: 255)
         create_if_missing: Create cel if it does not exist (default: True)
     """
     err = check_file(filename)
@@ -778,14 +1031,21 @@ async def draw_polygon(
     if len(points) < 3:
         return "Polygon requires at least 3 points"
 
-    rgb = validate_hex_color(color)
-    if rgb is None:
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
+
+    rgba = validate_hex_color_alpha(color)
+    if rgba is None:
         return f"Invalid color value: {color}"
-    r, g, b = rgb
+    r, g, b, _default_a = rgba
+    a = alpha
     safe_layer_name = _lua_escape(layer_name)
     create_flag = "true" if create_if_missing else "false"
     fill_flag = "true" if fill else "false"
-    points_lua = ", ".join(f"{{x={p['x']}, y={p['y']}}}" for p in points)
+    # Offset point coordinates by cel position for putPixel calls
+    points_lua = ", ".join(
+        f"{{x={p['x']}, y={p['y']}}}" for p in points
+    )
 
     script = f"""
     local spr = app.activeSprite
@@ -857,8 +1117,15 @@ async def draw_polygon(
         end
         if not cel then return end
         local img = cel.image
-        local color = Color({r}, {g}, {b}, 255)
+        local ox = cel.position.x
+        local oy = cel.position.y
+        local color = Color({r}, {g}, {b}, {a})
         local pts = {{ {points_lua} }}
+        -- Adjust all points to image-local coordinates
+        for i = 1, #pts do
+            pts[i].x = pts[i].x - ox
+            pts[i].y = pts[i].y - oy
+        end
         if {fill_flag} then
             fill_polygon(img, pts, color)
         end
@@ -887,6 +1154,7 @@ async def draw_path(
     points: list[dict[str, int]],
     color: str = "#000000",
     thickness: int = 1,
+    alpha: int = 255,
     create_if_missing: bool = True,
 ) -> str:
     """Draw a path using a polyline on a specific layer/frame.
@@ -896,8 +1164,9 @@ async def draw_path(
         layer_name: Layer name to target
         frame_index: Frame index starting at 1
         points: List of vertex coordinates, each: {"x": int, "y": int} (min 2)
-        color: Hex color code (default: "#000000")
+        color: Hex color code (default: "#000000"), supports #RRGGBBAA
         thickness: Line thickness in pixels (default: 1)
+        alpha: Alpha value 0-255 (default: 255)
         create_if_missing: Create cel if it does not exist (default: True)
     """
     err = check_file(filename)
@@ -907,10 +1176,14 @@ async def draw_path(
     if len(points) < 2:
         return "Path requires at least 2 points"
 
-    rgb = validate_hex_color(color)
-    if rgb is None:
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
+
+    rgba = validate_hex_color_alpha(color)
+    if rgba is None:
         return f"Invalid color value: {color}"
-    r, g, b = rgb
+    r, g, b, _default_a = rgba
+    a = alpha
     safe_layer_name = _lua_escape(layer_name)
     create_flag = "true" if create_if_missing else "false"
     points_lua = ", ".join(f"{{x={p['x']}, y={p['y']}}}" for p in points)
@@ -919,16 +1192,16 @@ async def draw_path(
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
 
-    local function put_thick(img, x, y, color, size)
+    local function put_thick(img, x, y, color, size, ox, oy)
         local r = math.max(0, math.floor(size / 2))
-        for oy = -r, r do
-            for ox = -r, r do
-                img:putPixel(x + ox, y + oy, color)
+        for dy = -r, r do
+            for dx = -r, r do
+                img:putPixel(x + dx - ox, y + dy - oy, color)
             end
         end
     end
 
-    local function draw_line(img, x0, y0, x1, y1, color, size)
+    local function draw_line(img, x0, y0, x1, y1, color, size, ox, oy)
         local dx = math.abs(x1 - x0)
         local sx = x0 < x1 and 1 or -1
         local dy = -math.abs(y1 - y0)
@@ -936,9 +1209,9 @@ async def draw_path(
         local err = dx + dy
         while true do
             if size > 1 then
-                put_thick(img, x0, y0, color, size)
+                put_thick(img, x0, y0, color, size, ox, oy)
             else
-                img:putPixel(x0, y0, color)
+                img:putPixel(x0 - ox, y0 - oy, color)
             end
             if x0 == x1 and y0 == y1 then break end
             local e2 = 2 * err
@@ -966,13 +1239,15 @@ async def draw_path(
         end
         if not cel then return end
         local img = cel.image
-        local color = Color({r}, {g}, {b}, 255)
+        local ox = cel.position.x
+        local oy = cel.position.y
+        local color = Color({r}, {g}, {b}, {a})
         local pts = {{ {points_lua} }}
         for i = 1, #pts - 1 do
             draw_line(
                 img, pts[i].x, pts[i].y,
                 pts[i + 1].x, pts[i + 1].y,
-                color, {thickness}
+                color, {thickness}, ox, oy
             )
         end
     end)
@@ -998,6 +1273,7 @@ async def apply_gradient_rect(
     height: int,
     color_start: str,
     color_end: str,
+    alpha: int = 255,
     horizontal: bool = True,
     create_if_missing: bool = True,
 ) -> str:
@@ -1011,8 +1287,9 @@ async def apply_gradient_rect(
         y: Top-left y coordinate of the rectangle
         width: Width of the rectangle (must be > 0)
         height: Height of the rectangle (must be > 0)
-        color_start: Starting hex color code (e.g. "#FF0000")
-        color_end: Ending hex color code (e.g. "#0000FF")
+        color_start: Starting hex color code (e.g. "#FF0000" or "#FF000080")
+        color_end: Ending hex color code (e.g. "#0000FF" or "#0000FF80")
+        alpha: Alpha value 0-255 (default: 255)
         horizontal: Gradient direction (True = horizontal, False = vertical)
         create_if_missing: Create cel if it does not exist (default: True)
     """
@@ -1023,15 +1300,21 @@ async def apply_gradient_rect(
     if width <= 0 or height <= 0:
         return "Width and height must be > 0"
 
-    start_rgb = validate_hex_color(color_start)
-    if start_rgb is None:
+    if not (0 <= alpha <= 255):
+        return "Error: alpha must be 0-255"
+
+    start_rgba = validate_hex_color_alpha(color_start)
+    if start_rgba is None:
         return f"Invalid color_start value: {color_start}"
-    end_rgb = validate_hex_color(color_end)
-    if end_rgb is None:
+    end_rgba = validate_hex_color_alpha(color_end)
+    if end_rgba is None:
         return f"Invalid color_end value: {color_end}"
 
-    sr, sg, sb = start_rgb
-    er, eg, eb = end_rgb
+    sr, sg, sb, sa = start_rgba
+    er, eg, eb, ea = end_rgba
+    # Alpha param always takes priority over hex-embedded alpha
+    sa = alpha
+    ea = alpha
     safe_layer_name = _lua_escape(layer_name)
     create_flag = "true" if create_if_missing else "false"
     horiz_flag = "true" if horizontal else "false"
@@ -1059,6 +1342,8 @@ async def apply_gradient_rect(
         end
         if not cel then return end
         local img = cel.image
+        local ox = cel.position.x
+        local oy = cel.position.y
         local w = {width}
         local h = {height}
         for iy = 0, h - 1 do
@@ -1072,7 +1357,8 @@ async def apply_gradient_rect(
                 local r = math.floor({sr} + ({er} - {sr}) * t + 0.5)
                 local g = math.floor({sg} + ({eg} - {sg}) * t + 0.5)
                 local b = math.floor({sb} + ({eb} - {sb}) * t + 0.5)
-                img:putPixel({x} + ix, {y} + iy, Color(r, g, b, 255))
+                local a = math.floor({sa} + ({ea} - {sa}) * t + 0.5)
+                img:putPixel({x} + ix - ox, {y} + iy - oy, Color(r, g, b, a))
             end
         end
     end)

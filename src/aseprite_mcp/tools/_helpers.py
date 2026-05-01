@@ -55,3 +55,28 @@ def validate_hex_color(color: str) -> tuple[int, int, int] | None:
     except ValueError:
         return None
     return r, g, b
+
+
+def validate_hex_color_alpha(color: str) -> tuple[int, int, int, int] | None:
+    """Parse a hex color string (#RRGGBB or #RRGGBBAA) to (r, g, b, a) tuple.
+    For 6-char hex (#RRGGBB), alpha defaults to 255.
+    Returns None if invalid."""
+    if not color:
+        return None
+    hex_color = color.lstrip("#")
+    try:
+        if len(hex_color) == 6:
+            r = int(hex_color[0:2], 16)
+            g = int(hex_color[2:4], 16)
+            b = int(hex_color[4:6], 16)
+            return r, g, b, 255
+        elif len(hex_color) == 8:
+            r = int(hex_color[0:2], 16)
+            g = int(hex_color[2:4], 16)
+            b = int(hex_color[4:6], 16)
+            a = int(hex_color[6:8], 16)
+            return r, g, b, a
+        else:
+            return None
+    except ValueError:
+        return None

@@ -1,6 +1,7 @@
 """Aseprite MCP tools package - tools are auto-registered on import."""
 
 from . import (
+    adjust,  # noqa: F401
     animation,  # noqa: F401
     canvas,  # noqa: F401
     drawing,  # noqa: F401

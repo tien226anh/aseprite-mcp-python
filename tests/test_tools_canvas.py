@@ -188,3 +188,300 @@ class TestSetLayer:
         assert "Set active layer" in result
         script = mock_cli.execute_lua_script.call_args[0][0]
         assert "newLayer" in script
+
+
+class TestDeleteLayer:
+    @pytest.mark.asyncio
+    async def test_delete_layer_path_traversal(self):
+        from aseprite_mcp.tools.canvas import delete_layer
+
+        result = await delete_layer(filename="../etc/passwd", layer_name="Layer1")
+        assert ".." in result
+
+    @pytest.mark.asyncio
+    async def test_delete_layer_file_not_found(self):
+        from aseprite_mcp.tools.canvas import delete_layer
+
+        with patch(
+            "aseprite_mcp.tools.canvas.check_file", return_value="File not found"
+        ):
+            result = await delete_layer(filename="missing.ase", layer_name="Layer1")
+        assert "not found" in result
+
+    @pytest.mark.asyncio
+    async def test_delete_layer_success(self, mock_cli):
+        from aseprite_mcp.tools.canvas import delete_layer
+
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await delete_layer(filename="test.ase", layer_name="Layer1")
+        assert "Deleted layer" in result
+        mock_cli.execute_lua_script.assert_called_once()
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert "deleteLayer" in script
+
+    @pytest.mark.asyncio
+    async def test_delete_layer_failure(self, mock_cli):
+        from aseprite_mcp.tools.canvas import delete_layer
+
+        mock_cli.execute_lua_script.return_value = (False, "Aseprite error")
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await delete_layer(filename="test.ase", layer_name="Layer1")
+        assert "Failed" in result
+
+
+class TestRenameLayer:
+    @pytest.mark.asyncio
+    async def test_rename_layer_file_not_found(self):
+        from aseprite_mcp.tools.canvas import rename_layer
+
+        with patch(
+            "aseprite_mcp.tools.canvas.check_file", return_value="File not found"
+        ):
+            result = await rename_layer(
+                filename="missing.ase", layer_name="Old", new_name="New"
+            )
+        assert "not found" in result
+
+    @pytest.mark.asyncio
+    async def test_rename_layer_success(self, mock_cli):
+        from aseprite_mcp.tools.canvas import rename_layer
+
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await rename_layer(
+                filename="test.ase", layer_name="Old", new_name="New"
+            )
+        assert "Renamed" in result
+        assert "Old" in result
+        assert "New" in result
+        mock_cli.execute_lua_script.assert_called_once()
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert 'target.name = "New"' in script
+
+    @pytest.mark.asyncio
+    async def test_rename_layer_failure(self, mock_cli):
+        from aseprite_mcp.tools.canvas import rename_layer
+
+        mock_cli.execute_lua_script.return_value = (False, "Aseprite error")
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await rename_layer(
+                filename="test.ase", layer_name="Old", new_name="New"
+            )
+        assert "Failed" in result
+
+
+class TestReorderLayer:
+    @pytest.mark.asyncio
+    async def test_reorder_layer_invalid_position(self):
+        from aseprite_mcp.tools.canvas import reorder_layer
+
+        result = await reorder_layer(
+            filename="test.ase", layer_name="Layer1", position=0
+        )
+        assert "Error" in result
+        assert "position" in result
+
+    @pytest.mark.asyncio
+    async def test_reorder_layer_negative_position(self):
+        from aseprite_mcp.tools.canvas import reorder_layer
+
+        result = await reorder_layer(
+            filename="test.ase", layer_name="Layer1", position=-1
+        )
+        assert "Error" in result
+
+    @pytest.mark.asyncio
+    async def test_reorder_layer_file_not_found(self):
+        from aseprite_mcp.tools.canvas import reorder_layer
+
+        with patch(
+            "aseprite_mcp.tools.canvas.check_file", return_value="File not found"
+        ):
+            result = await reorder_layer(
+                filename="missing.ase", layer_name="Layer1", position=1
+            )
+        assert "not found" in result
+
+    @pytest.mark.asyncio
+    async def test_reorder_layer_success(self, mock_cli):
+        from aseprite_mcp.tools.canvas import reorder_layer
+
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await reorder_layer(
+                filename="test.ase", layer_name="Layer1", position=2
+            )
+        assert "Moved layer" in result
+        assert "position 2" in result
+        mock_cli.execute_lua_script.assert_called_once()
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert "stackIndex" in script
+        assert "2" in script
+
+    @pytest.mark.asyncio
+    async def test_reorder_layer_failure(self, mock_cli):
+        from aseprite_mcp.tools.canvas import reorder_layer
+
+        mock_cli.execute_lua_script.return_value = (False, "Aseprite error")
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await reorder_layer(
+                filename="test.ase", layer_name="Layer1", position=2
+            )
+        assert "Failed" in result
+
+
+class TestDuplicateLayer:
+    @pytest.mark.asyncio
+    async def test_duplicate_layer_path_traversal(self):
+        from aseprite_mcp.tools.canvas import duplicate_layer
+
+        result = await duplicate_layer(
+            filename="../etc/passwd", layer_name="Layer1", new_layer_name="Copy"
+        )
+        assert ".." in result
+
+    @pytest.mark.asyncio
+    async def test_duplicate_layer_file_not_found(self):
+        from aseprite_mcp.tools.canvas import duplicate_layer
+
+        with patch(
+            "aseprite_mcp.tools.canvas.check_file", return_value="File not found"
+        ):
+            result = await duplicate_layer(
+                filename="missing.ase", layer_name="Layer1", new_layer_name="Copy"
+            )
+        assert "not found" in result
+
+    @pytest.mark.asyncio
+    async def test_duplicate_layer_success(self, mock_cli):
+        from aseprite_mcp.tools.canvas import duplicate_layer
+
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await duplicate_layer(
+                filename="test.ase", layer_name="Layer1", new_layer_name="Layer1_Copy"
+            )
+        assert "Duplicated" in result
+        assert "Layer1" in result
+        assert "Layer1_Copy" in result
+        mock_cli.execute_lua_script.assert_called_once()
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert "newLayer" in script
+        assert "Image(srcCel.image)" in script
+
+    @pytest.mark.asyncio
+    async def test_duplicate_layer_failure(self, mock_cli):
+        from aseprite_mcp.tools.canvas import duplicate_layer
+
+        mock_cli.execute_lua_script.return_value = (False, "Aseprite error")
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await duplicate_layer(
+                filename="test.ase", layer_name="Layer1", new_layer_name="Copy"
+            )
+        assert "Failed" in result
+
+
+class TestMergeLayerDown:
+    @pytest.mark.asyncio
+    async def test_merge_layer_down_path_traversal(self):
+        from aseprite_mcp.tools.canvas import merge_layer_down
+
+        result = await merge_layer_down(
+            filename="../etc/passwd", layer_name="Layer1"
+        )
+        assert ".." in result
+
+    @pytest.mark.asyncio
+    async def test_merge_layer_down_file_not_found(self):
+        from aseprite_mcp.tools.canvas import merge_layer_down
+
+        with patch(
+            "aseprite_mcp.tools.canvas.check_file", return_value="File not found"
+        ):
+            result = await merge_layer_down(
+                filename="missing.ase", layer_name="Layer1"
+            )
+        assert "not found" in result
+
+    @pytest.mark.asyncio
+    async def test_merge_layer_down_success(self, mock_cli):
+        from aseprite_mcp.tools.canvas import merge_layer_down
+
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await merge_layer_down(
+                filename="test.ase", layer_name="Layer1"
+            )
+        assert "Merged" in result
+        mock_cli.execute_lua_script.assert_called_once()
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert "MergeDownLayer" in script
+
+    @pytest.mark.asyncio
+    async def test_merge_layer_down_failure(self, mock_cli):
+        from aseprite_mcp.tools.canvas import merge_layer_down
+
+        mock_cli.execute_lua_script.return_value = (False, "Aseprite error")
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await merge_layer_down(
+                filename="test.ase", layer_name="Layer1"
+            )
+        assert "Failed" in result
+
+
+class TestSetLayerBlendMode:
+    @pytest.mark.asyncio
+    async def test_set_layer_blend_mode_invalid_mode(self):
+        from aseprite_mcp.tools.canvas import set_layer_blend_mode
+
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await set_layer_blend_mode(
+                filename="test.ase", layer_name="Layer1", blend_mode="invalid"
+            )
+        assert "Error" in result
+        assert "blend_mode" in result
+
+    @pytest.mark.asyncio
+    async def test_set_layer_blend_mode_file_not_found(self):
+        from aseprite_mcp.tools.canvas import set_layer_blend_mode
+
+        with patch(
+            "aseprite_mcp.tools.canvas.check_file", return_value="File not found"
+        ):
+            result = await set_layer_blend_mode(
+                filename="missing.ase", layer_name="Layer1", blend_mode="multiply"
+            )
+        assert "not found" in result
+
+    @pytest.mark.asyncio
+    async def test_set_layer_blend_mode_success(self, mock_cli):
+        from aseprite_mcp.tools.canvas import set_layer_blend_mode
+
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await set_layer_blend_mode(
+                filename="test.ase", layer_name="Layer1", blend_mode="multiply"
+            )
+        assert "blend mode" in result
+        assert "multiply" in result
+        mock_cli.execute_lua_script.assert_called_once()
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert "BlendMode.MULTIPLY" in script
+
+    @pytest.mark.asyncio
+    async def test_set_layer_blend_mode_default_normal(self, mock_cli):
+        from aseprite_mcp.tools.canvas import set_layer_blend_mode
+
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await set_layer_blend_mode(
+                filename="test.ase", layer_name="Layer1"
+            )
+        assert "normal" in result
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert "BlendMode.NORMAL" in script
+
+    @pytest.mark.asyncio
+    async def test_set_layer_blend_mode_failure(self, mock_cli):
+        from aseprite_mcp.tools.canvas import set_layer_blend_mode
+
+        mock_cli.execute_lua_script.return_value = (False, "Aseprite error")
+        with patch("aseprite_mcp.tools.canvas.check_file", return_value=None):
+            result = await set_layer_blend_mode(
+                filename="test.ase", layer_name="Layer1", blend_mode="screen"
+            )
+        assert "Failed" in result

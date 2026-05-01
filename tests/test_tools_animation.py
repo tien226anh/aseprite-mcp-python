@@ -287,3 +287,436 @@ class TestDuplicateFrameRange:
                 filename="test.ase", start_frame=1, end_frame=3, times=0
             )
         assert "Error" in result
+
+
+class TestDeleteFrames:
+    @pytest.mark.asyncio
+    async def test_delete_frames_start_zero(self):
+        from aseprite_mcp.tools.animation import delete_frames
+
+        result = await delete_frames(filename="test.ase", start_frame=0, end_frame=3)
+        assert "Error" in result
+        assert "start_frame" in result
+
+    @pytest.mark.asyncio
+    async def test_delete_frames_negative_start(self):
+        from aseprite_mcp.tools.animation import delete_frames
+
+        result = await delete_frames(filename="test.ase", start_frame=-1, end_frame=3)
+        assert "Error" in result
+
+    @pytest.mark.asyncio
+    async def test_delete_frames_end_before_start(self):
+        from aseprite_mcp.tools.animation import delete_frames
+
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await delete_frames(filename="test.ase", start_frame=5, end_frame=2)
+        assert "Error" in result
+        assert "end_frame" in result
+
+    @pytest.mark.asyncio
+    async def test_delete_frames_path_traversal(self):
+        from aseprite_mcp.tools.animation import delete_frames
+
+        result = await delete_frames(filename="../etc/passwd", start_frame=1, end_frame=3)
+        assert ".." in result
+
+    @pytest.mark.asyncio
+    async def test_delete_frames_file_not_found(self):
+        from aseprite_mcp.tools.animation import delete_frames
+
+        with patch(
+            "aseprite_mcp.tools.animation.check_file",
+            return_value="File test.ase not found",
+        ):
+            result = await delete_frames(filename="test.ase", start_frame=1, end_frame=3)
+        assert "not found" in result
+
+    @pytest.mark.asyncio
+    async def test_delete_frames_success(self, mock_cli):
+        from aseprite_mcp.tools.animation import delete_frames
+
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await delete_frames(filename="test.ase", start_frame=2, end_frame=4)
+        assert "Deleted frames 2-4" in result
+        mock_cli.execute_lua_script.assert_called_once()
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert "deleteFrame" in script
+        # Must iterate backwards
+        assert "for i = 4, 2, -1 do" in script
+
+    @pytest.mark.asyncio
+    async def test_delete_frames_single_frame(self, mock_cli):
+        from aseprite_mcp.tools.animation import delete_frames
+
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await delete_frames(filename="test.ase", start_frame=3, end_frame=3)
+        assert "Deleted frames 3-3" in result
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert "for i = 3, 3, -1 do" in script
+
+    @pytest.mark.asyncio
+    async def test_delete_frames_failure(self, mock_cli):
+        from aseprite_mcp.tools.animation import delete_frames
+
+        mock_cli.execute_lua_script.return_value = (False, "Aseprite error")
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await delete_frames(filename="test.ase", start_frame=1, end_frame=2)
+        assert "Failed" in result
+
+
+class TestDeleteTag:
+    @pytest.mark.asyncio
+    async def test_delete_tag_file_not_found(self):
+        from aseprite_mcp.tools.animation import delete_tag
+
+        with patch(
+            "aseprite_mcp.tools.animation.check_file",
+            return_value="File missing",
+        ):
+            result = await delete_tag(filename="missing.ase", name="walk")
+        assert "missing" in result
+
+    @pytest.mark.asyncio
+    async def test_delete_tag_success(self, mock_cli):
+        from aseprite_mcp.tools.animation import delete_tag
+
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await delete_tag(filename="test.ase", name="walk")
+        assert "Deleted tag" in result
+        assert "walk" in result
+        mock_cli.execute_lua_script.assert_called_once()
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert "deleteTag" in script
+
+    @pytest.mark.asyncio
+    async def test_delete_tag_failure(self, mock_cli):
+        from aseprite_mcp.tools.animation import delete_tag
+
+        mock_cli.execute_lua_script.return_value = (False, "Aseprite error")
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await delete_tag(filename="test.ase", name="walk")
+        assert "Failed" in result
+
+
+class TestTweenCelRotation:
+    @pytest.mark.asyncio
+    async def test_invalid_easing(self):
+        from aseprite_mcp.tools.animation import tween_cel_rotation
+
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await tween_cel_rotation(
+                filename="test.ase",
+                layer_name="Layer1",
+                start_frame=1,
+                end_frame=4,
+                start_angle=0.0,
+                end_angle=90.0,
+                easing="bounce",
+            )
+        assert "Error" in result
+        assert "easing" in result
+
+    @pytest.mark.asyncio
+    async def test_start_frame_zero(self):
+        from aseprite_mcp.tools.animation import tween_cel_rotation
+
+        result = await tween_cel_rotation(
+            filename="test.ase",
+            layer_name="Layer1",
+            start_frame=0,
+            end_frame=4,
+            start_angle=0.0,
+            end_angle=90.0,
+        )
+        assert "Error" in result
+        assert "frame" in result.lower()
+
+    @pytest.mark.asyncio
+    async def test_end_frame_not_greater(self):
+        from aseprite_mcp.tools.animation import tween_cel_rotation
+
+        result = await tween_cel_rotation(
+            filename="test.ase",
+            layer_name="Layer1",
+            start_frame=4,
+            end_frame=4,
+            start_angle=0.0,
+            end_angle=90.0,
+        )
+        assert "Error" in result
+        assert "end_frame" in result
+
+    @pytest.mark.asyncio
+    async def test_file_not_found(self):
+        from aseprite_mcp.tools.animation import tween_cel_rotation
+
+        with patch(
+            "aseprite_mcp.tools.animation.check_file",
+            return_value="File missing",
+        ):
+            result = await tween_cel_rotation(
+                filename="missing.ase",
+                layer_name="Layer1",
+                start_frame=1,
+                end_frame=4,
+                start_angle=0.0,
+                end_angle=90.0,
+            )
+        assert "missing" in result
+
+    @pytest.mark.asyncio
+    async def test_success_default_pivot(self, mock_cli):
+        from aseprite_mcp.tools.animation import tween_cel_rotation
+
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await tween_cel_rotation(
+                filename="test.ase",
+                layer_name="Layer1",
+                start_frame=1,
+                end_frame=4,
+                start_angle=0.0,
+                end_angle=90.0,
+            )
+        assert "Tweened cel rotation" in result
+        assert "linear" in result
+        assert "Layer1" in result
+        mock_cli.execute_lua_script.assert_called_once()
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert "rotate_image" in script
+        assert "autoPivot = true" in script
+        assert "ease(t)" in script
+
+    @pytest.mark.asyncio
+    async def test_success_custom_pivot_and_easing(self, mock_cli):
+        from aseprite_mcp.tools.animation import tween_cel_rotation
+
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await tween_cel_rotation(
+                filename="test.ase",
+                layer_name="Layer1",
+                start_frame=1,
+                end_frame=8,
+                start_angle=0.0,
+                end_angle=360.0,
+                pivot_x=16,
+                pivot_y=16,
+                easing="smoothstep",
+                create_missing_cels=True,
+                source_frame_index=2,
+            )
+        assert "Tweened cel rotation" in result
+        assert "smoothstep" in result
+        assert "360" in result
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert "rotate_image" in script
+        assert "autoPivot = false" in script
+        assert "gPivotX = 16" in script
+        assert "gPivotY = 16" in script
+        assert "t * t * (3 - 2 * t)" in script
+
+    @pytest.mark.asyncio
+    async def test_failure(self, mock_cli):
+        from aseprite_mcp.tools.animation import tween_cel_rotation
+
+        mock_cli.execute_lua_script.return_value = (False, "Aseprite error")
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await tween_cel_rotation(
+                filename="test.ase",
+                layer_name="Layer1",
+                start_frame=1,
+                end_frame=4,
+                start_angle=0.0,
+                end_angle=90.0,
+            )
+        assert "Failed" in result
+
+
+class TestTweenCelScale:
+    @pytest.mark.asyncio
+    async def test_invalid_easing(self):
+        from aseprite_mcp.tools.animation import tween_cel_scale
+
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await tween_cel_scale(
+                filename="test.ase",
+                layer_name="Layer1",
+                start_frame=1,
+                end_frame=4,
+                start_scale=1.0,
+                end_scale=2.0,
+                easing="elastic",
+            )
+        assert "Error" in result
+        assert "easing" in result
+
+    @pytest.mark.asyncio
+    async def test_start_scale_zero(self):
+        from aseprite_mcp.tools.animation import tween_cel_scale
+
+        result = await tween_cel_scale(
+            filename="test.ase",
+            layer_name="Layer1",
+            start_frame=1,
+            end_frame=4,
+            start_scale=0.0,
+            end_scale=2.0,
+        )
+        assert "Error" in result
+        assert "start_scale" in result
+
+    @pytest.mark.asyncio
+    async def test_start_scale_negative(self):
+        from aseprite_mcp.tools.animation import tween_cel_scale
+
+        result = await tween_cel_scale(
+            filename="test.ase",
+            layer_name="Layer1",
+            start_frame=1,
+            end_frame=4,
+            start_scale=-0.5,
+            end_scale=2.0,
+        )
+        assert "Error" in result
+        assert "start_scale" in result
+
+    @pytest.mark.asyncio
+    async def test_end_scale_zero(self):
+        from aseprite_mcp.tools.animation import tween_cel_scale
+
+        result = await tween_cel_scale(
+            filename="test.ase",
+            layer_name="Layer1",
+            start_frame=1,
+            end_frame=4,
+            start_scale=1.0,
+            end_scale=0.0,
+        )
+        assert "Error" in result
+        assert "end_scale" in result
+
+    @pytest.mark.asyncio
+    async def test_end_scale_negative(self):
+        from aseprite_mcp.tools.animation import tween_cel_scale
+
+        result = await tween_cel_scale(
+            filename="test.ase",
+            layer_name="Layer1",
+            start_frame=1,
+            end_frame=4,
+            start_scale=1.0,
+            end_scale=-1.0,
+        )
+        assert "Error" in result
+        assert "end_scale" in result
+
+    @pytest.mark.asyncio
+    async def test_frame_indices_invalid(self):
+        from aseprite_mcp.tools.animation import tween_cel_scale
+
+        result = await tween_cel_scale(
+            filename="test.ase",
+            layer_name="Layer1",
+            start_frame=0,
+            end_frame=4,
+            start_scale=1.0,
+            end_scale=2.0,
+        )
+        assert "Error" in result
+        assert "frame" in result.lower()
+
+    @pytest.mark.asyncio
+    async def test_end_frame_not_greater(self):
+        from aseprite_mcp.tools.animation import tween_cel_scale
+
+        result = await tween_cel_scale(
+            filename="test.ase",
+            layer_name="Layer1",
+            start_frame=4,
+            end_frame=4,
+            start_scale=1.0,
+            end_scale=2.0,
+        )
+        assert "Error" in result
+        assert "end_frame" in result
+
+    @pytest.mark.asyncio
+    async def test_file_not_found(self):
+        from aseprite_mcp.tools.animation import tween_cel_scale
+
+        with patch(
+            "aseprite_mcp.tools.animation.check_file",
+            return_value="File missing",
+        ):
+            result = await tween_cel_scale(
+                filename="missing.ase",
+                layer_name="Layer1",
+                start_frame=1,
+                end_frame=4,
+                start_scale=1.0,
+                end_scale=2.0,
+            )
+        assert "missing" in result
+
+    @pytest.mark.asyncio
+    async def test_success_default_pivot(self, mock_cli):
+        from aseprite_mcp.tools.animation import tween_cel_scale
+
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await tween_cel_scale(
+                filename="test.ase",
+                layer_name="Layer1",
+                start_frame=1,
+                end_frame=4,
+                start_scale=1.0,
+                end_scale=2.0,
+            )
+        assert "Tweened cel scale" in result
+        assert "linear" in result
+        assert "Layer1" in result
+        mock_cli.execute_lua_script.assert_called_once()
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert "scale_image" in script
+        assert "autoPivot = true" in script
+
+    @pytest.mark.asyncio
+    async def test_success_custom_pivot_and_easing(self, mock_cli):
+        from aseprite_mcp.tools.animation import tween_cel_scale
+
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await tween_cel_scale(
+                filename="test.ase",
+                layer_name="Layer1",
+                start_frame=1,
+                end_frame=8,
+                start_scale=0.5,
+                end_scale=1.5,
+                pivot_x=16,
+                pivot_y=16,
+                easing="ease_in_out",
+                create_missing_cels=True,
+                source_frame_index=2,
+            )
+        assert "Tweened cel scale" in result
+        assert "ease_in_out" in result
+        script = mock_cli.execute_lua_script.call_args[0][0]
+        assert "scale_image" in script
+        assert "autoPivot = false" in script
+        assert "gPivotX = 16" in script
+        assert "gPivotY = 16" in script
+
+    @pytest.mark.asyncio
+    async def test_failure(self, mock_cli):
+        from aseprite_mcp.tools.animation import tween_cel_scale
+
+        mock_cli.execute_lua_script.return_value = (False, "Aseprite error")
+        with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
+            result = await tween_cel_scale(
+                filename="test.ase",
+                layer_name="Layer1",
+                start_frame=1,
+                end_frame=4,
+                start_scale=1.0,
+                end_scale=2.0,
+            )
+        assert "Failed" in result

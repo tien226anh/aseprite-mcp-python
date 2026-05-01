@@ -54,6 +54,11 @@ async def copy_sprite(
         output_filename: Path for the copied file (must end in .aseprite)
         overwrite: If True, overwrite existing output file. Default: False
     """
+    if ".." in filename:
+        return "Error: filename must not contain '..' (path traversal)"
+    if ".." in output_filename:
+        return "Error: output_filename must not contain '..' (path traversal)"
+
     err = check_file(filename)
     if err:
         return err

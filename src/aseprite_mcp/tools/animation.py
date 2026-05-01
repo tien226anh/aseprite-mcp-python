@@ -734,6 +734,72 @@ return "Deleted cel on layer '" .. target.name .. "' at frame {frame_index}"
     return f"Failed to clear cel: {output}"
 
 
+@mcp.tool()
+async def clear_cel_image(
+    filename: str, layer_name: str, frame_index: int
+) -> str:
+    """Clear a cel's image content to transparent without deleting the cel.
+
+    Unlike ``clear_cel`` which removes the cel entirely, this tool keeps
+    the cel in place but sets all its pixels to transparent (rgba 0,0,0,0).
+
+    Args:
+        filename: Path to the Aseprite file
+        layer_name: Name of the target layer
+        frame_index: 1-based frame index
+    """
+    if frame_index < 1:
+        return f"Error: frame_index must be >= 1, got {frame_index}"
+    err = check_file(filename)
+    if err:
+        return err
+
+    esc = _esc_path(filename)
+    esc_layer = _lua_escape(layer_name)
+
+    script = f"""
+    local spr = app.activeSprite
+    if not spr then return "No active sprite" end
+
+    if {frame_index} > #spr.frames then
+        return "Frame index {frame_index} exceeds total frames (" .. #spr.frames .. ")"
+    end
+
+    local target = nil
+    for _, layer in ipairs(spr.layers) do
+        if layer.name == "{esc_layer}" then
+            target = layer
+            break
+        end
+    end
+
+    if not target then
+        return "Layer '" .. "{esc_layer}" .. "' not found"
+    end
+
+    local frame = spr.frames[{frame_index}]
+    local cel = target:cel(frame)
+    if not cel then
+        return "No cel on layer '" .. target.name .. "' at frame {frame_index}"
+    end
+
+    app.transaction(function()
+        cel.image:clear()
+    end)
+
+    spr:saveAs("{esc}")
+    return "Cleared cel image on layer '" .. target.name .. "' at frame {frame_index}"
+    """
+
+    success, output = get_cli().execute_lua_script(script, filename)
+    if success:
+        return (
+            f"Cleared cel image on layer '{layer_name}' "
+            f"at frame {frame_index} in {filename}"
+        )
+    return f"Failed to clear cel image: {output}"
+
+
 # ── Cel & frame copy ────────────────────────────────────────────────────────
 
 
@@ -1456,6 +1522,507 @@ return "Tweened cel opacity with '{easing}' easing on layer '{esc_layer}'"
             f"({start_opacity}->{end_opacity}) in {filename}"
         )
     return f"Failed to tween cel opacity: {output}"
+
+
+# ── Rotation & Scale tweening ────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def tween_cel_rotation(
+    filename: str,
+    layer_name: str,
+    start_frame: int,
+    end_frame: int,
+    start_angle: float,
+    end_angle: float,
+    pivot_x: int = 0,
+    pivot_y: int = 0,
+    easing: str = "linear",
+    create_missing_cels: bool = False,
+    source_frame_index: int | None = None,
+) -> str:
+    """Tween cel rotation across a frame range using pixel-level warping.
+
+    Rotates the cel image around a pivot point, interpolating the angle
+    with optional easing. Uses nearest-neighbor sampling (pixel-art style).
+
+    Args:
+        filename: Path to the Aseprite file
+        layer_name: Name of the target layer
+        start_frame: 1-based index of the first frame in the range
+        end_frame: 1-based index of the last frame in the range
+        start_angle: Starting rotation angle in degrees
+        end_angle: Ending rotation angle in degrees
+        pivot_x: X coordinate of the rotation center in sprite-global
+            coordinates. When both pivot_x and pivot_y are 0 (default),
+            auto-calculates from the source cel's center.
+        pivot_y: Y coordinate of the rotation center in sprite-global
+            coordinates. When both pivot_x and pivot_y are 0 (default),
+            auto-calculates from the source cel's center.
+        easing: Easing function - "linear", "ease_in",
+            "ease_out", "ease_in_out", or "smoothstep"
+            (default: "linear")
+        create_missing_cels: If True, create cels where none exist
+        source_frame_index: Source frame for copying cel content
+            when creating (default: start_frame)
+    """
+    valid_easings = {"linear", "ease_in", "ease_out", "ease_in_out", "smoothstep"}
+    if easing not in valid_easings:
+        return f"Error: easing must be one of {valid_easings}, got '{easing}'"
+    if start_frame < 1 or end_frame < 1:
+        return "Error: frame indices must be >= 1"
+    if end_frame <= start_frame:
+        return f"Error: end_frame ({end_frame}) must be > start_frame ({start_frame})"
+    err = check_file(filename)
+    if err:
+        return err
+
+    esc = _esc_path(filename)
+    esc_layer = _lua_escape(layer_name)
+    create_flag = _lua_bool(create_missing_cels)
+    source_frame = source_frame_index if source_frame_index is not None else start_frame
+
+    easing_lua = {
+        "linear": "local function ease(t) return t end",
+        "ease_in": "local function ease(t) return t * t * t end",
+        "ease_out": "local function ease(t) return 1 - (1 - t) ^ 3 end",
+        "ease_in_out": (
+            "local function ease(t) "
+            "if t < 0.5 then return 4 * t * t * t "
+            "else return 1 - ((-2 * t + 2) ^ 3) / 2 end end"
+        ),
+        "smoothstep": "local function ease(t) return t * t * (3 - 2 * t) end",
+    }[easing]
+
+    auto_pivot = pivot_x == 0 and pivot_y == 0
+
+    script = f"""
+local spr = app.activeSprite
+if not spr then return "No active sprite" end
+
+if {start_frame} > #spr.frames or {end_frame} > #spr.frames then
+    return "Frame range exceeds total frames (" .. #spr.frames .. ")"
+end
+
+local target = nil
+for _, layer in ipairs(spr.layers) do
+    if layer.name == "{esc_layer}" then
+        target = layer
+        break
+    end
+end
+
+if not target then
+    return "Layer '" .. "{esc_layer}" .. "' not found"
+end
+
+{easing_lua}
+
+local function rotate_image(srcImg, angle_deg, celPivotX, celPivotY)
+    local rad = angle_deg * math.pi / 180
+    local cos_a = math.cos(rad)
+    local sin_a = math.sin(rad)
+
+    local dstImg = Image(srcImg.width, srcImg.height, srcImg.colorMode)
+    dstImg:clear()
+
+    local cx = celPivotX
+    local cy = celPivotY
+
+    for y = 0, dstImg.height - 1 do
+        for x = 0, dstImg.width - 1 do
+            local dx = x - cx
+            local dy = y - cy
+            local sx = math.floor(dx * cos_a + dy * sin_a + cx + 0.5)
+            local sy = math.floor(-dx * sin_a + dy * cos_a + cy + 0.5)
+            if sx >= 0 and sx < srcImg.width and sy >= 0 and sy < srcImg.height then
+                local c = srcImg:getPixel(sx, sy)
+                if app.pixelColor.rgbaA(c) > 0 then
+                    dstImg:drawPixel(x, y, c)
+                end
+            end
+        end
+    end
+
+    return dstImg
+end
+
+local totalSteps = {end_frame} - {start_frame}
+local srcFrame = spr.frames[{source_frame}]
+local autoPivot = {"true" if auto_pivot else "false"}
+local gPivotX = {pivot_x}
+local gPivotY = {pivot_y}
+
+app.transaction(function()
+    for i = {start_frame}, {end_frame} do
+        local t = (i - {start_frame}) / totalSteps
+        local et = ease(t)
+        local angle = {start_angle} + ({end_angle} - {start_angle}) * et
+
+        local frame = spr.frames[i]
+        local cel = target:cel(frame)
+
+        local srcCel = target:cel(srcFrame)
+
+        if cel then
+            local srcImg = cel.image
+            local pX, pY
+            if autoPivot then
+                if srcCel then
+                    pX = srcCel.position.x + math.floor(srcCel.image.width / 2)
+                    pY = srcCel.position.y + math.floor(srcCel.image.height / 2)
+                else
+                    pX = cel.position.x + math.floor(cel.image.width / 2)
+                    pY = cel.position.y + math.floor(cel.image.height / 2)
+                end
+            else
+                pX = gPivotX
+                pY = gPivotY
+            end
+            local celPivotX = pX - cel.position.x
+            local celPivotY = pY - cel.position.y
+            local newImg = rotate_image(srcImg, angle, celPivotX, celPivotY)
+            cel.image = newImg
+        elseif {create_flag} then
+            if srcCel then
+                local newImg = Image(srcCel.image)
+                local pX, pY
+                if autoPivot then
+                    pX = srcCel.position.x + math.floor(srcCel.image.width / 2)
+                    pY = srcCel.position.y + math.floor(srcCel.image.height / 2)
+                else
+                    pX = gPivotX
+                    pY = gPivotY
+                end
+                local celPivotX = pX - srcCel.position.x
+                local celPivotY = pY - srcCel.position.y
+                local rotImg = rotate_image(newImg, angle, celPivotX, celPivotY)
+                spr:newCel(target, frame, rotImg, srcCel.position)
+            else
+                local img = Image(spr.width, spr.height, spr.colorMode)
+                spr:newCel(target, frame, img, Point(0, 0))
+            end
+        end
+    end
+end)
+
+spr:saveAs("{esc}")
+return "Tweened cel rotation with '{easing}' easing on layer '{esc_layer}'"
+"""
+
+    success, output = get_cli().execute_lua_script(script, filename)
+    if success:
+        return (
+            f"Tweened cel rotation with '{easing}' easing "
+            f"on layer '{layer_name}' "
+            f"frames {start_frame}-{end_frame} "
+            f"({start_angle}°->{end_angle}°) in {filename}"
+        )
+    return f"Failed to tween cel rotation: {output}"
+
+
+@mcp.tool()
+async def tween_cel_scale(
+    filename: str,
+    layer_name: str,
+    start_frame: int,
+    end_frame: int,
+    start_scale: float = 1.0,
+    end_scale: float = 1.0,
+    pivot_x: int = 0,
+    pivot_y: int = 0,
+    easing: str = "linear",
+    create_missing_cels: bool = False,
+    source_frame_index: int | None = None,
+) -> str:
+    """Tween cel scale across a frame range using pixel-level resampling.
+
+    Scales the cel image by interpolating the scale factor with optional
+    easing. Uses nearest-neighbor sampling (pixel-art style). The cel
+    position is adjusted so the scaled image stays centered on the pivot.
+
+    Args:
+        filename: Path to the Aseprite file
+        layer_name: Name of the target layer
+        start_frame: 1-based index of the first frame in the range
+        end_frame: 1-based index of the last frame in the range
+        start_scale: Starting scale factor (must be > 0, default: 1.0)
+        end_scale: Ending scale factor (must be > 0, default: 1.0)
+        pivot_x: X coordinate of the scaling center in sprite-global
+            coordinates. When both pivot_x and pivot_y are 0 (default),
+            auto-calculates from the source cel's center.
+        pivot_y: Y coordinate of the scaling center in sprite-global
+            coordinates. When both pivot_x and pivot_y are 0 (default),
+            auto-calculates from the source cel's center.
+        easing: Easing function - "linear", "ease_in",
+            "ease_out", "ease_in_out", or "smoothstep"
+            (default: "linear")
+        create_missing_cels: If True, create cels where none exist
+        source_frame_index: Source frame for copying cel content
+            when creating (default: start_frame)
+    """
+    valid_easings = {"linear", "ease_in", "ease_out", "ease_in_out", "smoothstep"}
+    if easing not in valid_easings:
+        return f"Error: easing must be one of {valid_easings}, got '{easing}'"
+    if start_scale <= 0:
+        return f"Error: start_scale must be > 0, got {start_scale}"
+    if end_scale <= 0:
+        return f"Error: end_scale must be > 0, got {end_scale}"
+    if start_frame < 1 or end_frame < 1:
+        return "Error: frame indices must be >= 1"
+    if end_frame <= start_frame:
+        return f"Error: end_frame ({end_frame}) must be > start_frame ({start_frame})"
+    err = check_file(filename)
+    if err:
+        return err
+
+    esc = _esc_path(filename)
+    esc_layer = _lua_escape(layer_name)
+    create_flag = _lua_bool(create_missing_cels)
+    source_frame = source_frame_index if source_frame_index is not None else start_frame
+
+    easing_lua = {
+        "linear": "local function ease(t) return t end",
+        "ease_in": "local function ease(t) return t * t * t end",
+        "ease_out": "local function ease(t) return 1 - (1 - t) ^ 3 end",
+        "ease_in_out": (
+            "local function ease(t) "
+            "if t < 0.5 then return 4 * t * t * t "
+            "else return 1 - ((-2 * t + 2) ^ 3) / 2 end end"
+        ),
+        "smoothstep": "local function ease(t) return t * t * (3 - 2 * t) end",
+    }[easing]
+
+    auto_pivot = pivot_x == 0 and pivot_y == 0
+
+    script = f"""
+local spr = app.activeSprite
+if not spr then return "No active sprite" end
+
+if {start_frame} > #spr.frames or {end_frame} > #spr.frames then
+    return "Frame range exceeds total frames (" .. #spr.frames .. ")"
+end
+
+local target = nil
+for _, layer in ipairs(spr.layers) do
+    if layer.name == "{esc_layer}" then
+        target = layer
+        break
+    end
+end
+
+if not target then
+    return "Layer '" .. "{esc_layer}" .. "' not found"
+end
+
+{easing_lua}
+
+local function scale_image(srcImg, scale)
+    local newW = math.floor(srcImg.width * scale + 0.5)
+    local newH = math.floor(srcImg.height * scale + 0.5)
+    if newW < 1 then newW = 1 end
+    if newH < 1 then newH = 1 end
+
+    local dstImg = Image(newW, newH, srcImg.colorMode)
+    dstImg:clear()
+
+    for y = 0, newH - 1 do
+        for x = 0, newW - 1 do
+            local sx = math.floor(x / scale + 0.5)
+            local sy = math.floor(y / scale + 0.5)
+            if sx >= 0 and sx < srcImg.width and sy >= 0 and sy < srcImg.height then
+                local c = srcImg:getPixel(sx, sy)
+                if app.pixelColor.rgbaA(c) > 0 then
+                    dstImg:drawPixel(x, y, c)
+                end
+            end
+        end
+    end
+
+    return dstImg
+end
+
+local totalSteps = {end_frame} - {start_frame}
+local srcFrame = spr.frames[{source_frame}]
+local autoPivot = {"true" if auto_pivot else "false"}
+local gPivotX = {pivot_x}
+local gPivotY = {pivot_y}
+
+app.transaction(function()
+    for i = {start_frame}, {end_frame} do
+        local t = (i - {start_frame}) / totalSteps
+        local et = ease(t)
+        local scale = {start_scale} + ({end_scale} - {start_scale}) * et
+
+        local frame = spr.frames[i]
+        local cel = target:cel(frame)
+
+        local srcCel = target:cel(srcFrame)
+
+        if cel then
+            local srcImg = cel.image
+            local pX, pY
+            if autoPivot then
+                if srcCel then
+                    pX = srcCel.position.x + math.floor(srcCel.image.width / 2)
+                    pY = srcCel.position.y + math.floor(srcCel.image.height / 2)
+                else
+                    pX = cel.position.x + math.floor(cel.image.width / 2)
+                    pY = cel.position.y + math.floor(cel.image.height / 2)
+                end
+            else
+                pX = gPivotX
+                pY = gPivotY
+            end
+            local newImg = scale_image(srcImg, scale)
+            local newW = newImg.width
+            local newH = newImg.height
+            local newX = math.floor(pX - newW / 2 + 0.5)
+            local newY = math.floor(pY - newH / 2 + 0.5)
+            cel.image = newImg
+            cel.position = Point(newX, newY)
+        elseif {create_flag} then
+            if srcCel then
+                local newImg = Image(srcCel.image)
+                local pX, pY
+                if autoPivot then
+                    pX = srcCel.position.x + math.floor(srcCel.image.width / 2)
+                    pY = srcCel.position.y + math.floor(srcCel.image.height / 2)
+                else
+                    pX = gPivotX
+                    pY = gPivotY
+                end
+                local scaledImg = scale_image(newImg, scale)
+                local newW = scaledImg.width
+                local newH = scaledImg.height
+                local newX = math.floor(pX - newW / 2 + 0.5)
+                local newY = math.floor(pY - newH / 2 + 0.5)
+                spr:newCel(target, frame, scaledImg, Point(newX, newY))
+            else
+                local img = Image(spr.width, spr.height, spr.colorMode)
+                spr:newCel(target, frame, img, Point(0, 0))
+            end
+        end
+    end
+end)
+
+spr:saveAs("{esc}")
+return "Tweened cel scale with '{easing}' easing on layer '{esc_layer}'"
+"""
+
+    success, output = get_cli().execute_lua_script(script, filename)
+    if success:
+        return (
+            f"Tweened cel scale with '{easing}' easing "
+            f"on layer '{layer_name}' "
+            f"frames {start_frame}-{end_frame} "
+            f"({start_scale}x->{end_scale}x) in {filename}"
+        )
+    return f"Failed to tween cel scale: {output}"
+
+
+# ── Frame deletion ──────────────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def delete_frames(
+    filename: str, start_frame: int, end_frame: int
+) -> str:
+    """Delete a range of frames from an Aseprite sprite.
+
+    Iterates backwards to avoid index shifting issues.
+
+    Args:
+        filename: Path to the Aseprite file
+        start_frame: 1-based index of the first frame to delete
+        end_frame: 1-based index of the last frame to delete
+    """
+    if start_frame < 1:
+        return f"Error: start_frame must be >= 1, got {start_frame}"
+    if end_frame < start_frame:
+        return f"Error: end_frame ({end_frame}) must be >= start_frame ({start_frame})"
+    if ".." in filename:
+        return "Error: filename must not contain '..' (path traversal)"
+    err = check_file(filename)
+    if err:
+        return err
+
+    esc = _esc_path(filename)
+
+    script = f"""
+local spr = app.activeSprite
+if not spr then return "No active sprite" end
+
+if {start_frame} > #spr.frames then
+    return "Start frame {start_frame} exceeds total frames (" .. #spr.frames .. ")"
+end
+if {end_frame} > #spr.frames then
+    return "End frame {end_frame} exceeds total frames (" .. #spr.frames .. ")"
+end
+
+-- Delete backwards to avoid index shifting
+app.transaction(function()
+    for i = {end_frame}, {start_frame}, -1 do
+        spr:deleteFrame(spr.frames[i])
+    end
+end)
+
+spr:saveAs("{esc}")
+return "Deleted frames {start_frame}-{end_frame}"
+"""
+
+    success, output = get_cli().execute_lua_script(script, filename)
+    if success:
+        return f"Deleted frames {start_frame}-{end_frame} from {filename}"
+    return f"Failed to delete frames: {output}"
+
+
+# ── Tag deletion ────────────────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def delete_tag(filename: str, name: str) -> str:
+    """Delete an animation tag by name.
+
+    Args:
+        filename: Path to the Aseprite file
+        name: Name of the tag to delete
+    """
+    err = check_file(filename)
+    if err:
+        return err
+
+    esc = _esc_path(filename)
+    esc_name = _lua_escape(name)
+
+    script = f"""
+local spr = app.activeSprite
+if not spr then return "No active sprite" end
+
+local target = nil
+for _, tag in ipairs(spr.tags) do
+    if tag.name == "{esc_name}" then
+        target = tag
+        break
+    end
+end
+
+if not target then
+    return "Tag '" .. "{esc_name}" .. "' not found"
+end
+
+app.transaction(function()
+    spr:deleteTag(target)
+end)
+
+spr:saveAs("{esc}")
+return "Deleted tag '" .. "{esc_name}" .. "'"
+"""
+
+    success, output = get_cli().execute_lua_script(script, filename)
+    if success:
+        return f"Deleted tag '{name}' from {filename}"
+    return f"Failed to delete tag: {output}"
 
 
 # ── Cel propagation ─────────────────────────────────────────────────────────
