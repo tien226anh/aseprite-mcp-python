@@ -4,10 +4,18 @@ An MCP (Model Context Protocol) server that bridges LLMs to [Aseprite](https://w
 
 ## Features
 
-- **Sprite Management**: Create, export, and inspect sprites via CLI batch mode
+- **Sprite Management**: Create, export, copy, and inspect sprites
+- **Drawing Tools**: Pixels, lines, rectangles, circles, polygons, paths, flood fill, and gradients
+- **Animation**: Frame and cel management, tweening (linear and eased), oscillation, opacity animation, and propagation
+- **Layer Operations**: Add, set, show/hide, set opacity, and copy layers between sprites
+- **Palette Management**: Read/write palettes, remap colors across cel ranges
+- **Pixel Reading**: Sample individual pixels or rectangular regions
+- **Transforms**: Flip, rotate, resize, and crop sprites
+- **Quality Assurance**: Validate scenes, audit for overlaps and out-of-range activity, sanitize animations
 - **Spritesheet Export**: Generate spritesheets with JSON atlas metadata
 - **Real-time Drawing**: WebSocket bridge for interactive pixel manipulation
 - **Custom Lua Scripts**: Execute arbitrary Lua scripts in Aseprite
+- **Preview Server**: HTTP server for browser preview of exported sprites
 - **Built-in Palettes**: Dawnbringer32 and PICO-8 palettes included
 - **Pixel Art Prompts**: Guided prompt template for LLM-driven asset generation
 
@@ -75,18 +83,134 @@ aseprite-mcp --transport streamable-http --port 9090
 
 ## MCP Tools
 
+### Legacy Tools (server.py)
+
+These use the original `run_json_script` / `run_batch` / `run_script` patterns:
+
 | Tool | Description |
 |------|-------------|
 | `sprite_create` | Create a new sprite (saves to `output_dir` by default) |
-| `sprite_export` | Export a sprite to PNG, GIF, etc. (saves to `output_dir` by default) |
-| `sprite_info` | Get metadata (dimensions, layers, tags, frames, palette) |
+| `sprite_export` | Export a sprite to PNG, GIF, etc. |
+| `sprite_info` | Get metadata (dimensions, layers, tags, frames, palette) as JSON |
 | `sprite_list_layers` | List all layers in a sprite |
 | `sprite_list_tags` | List all frame tags in a sprite |
-| `spritesheet_export` | Export as spritesheet with JSON atlas (saves to `output_dir` by default) |
+| `spritesheet_export` | Export as spritesheet with JSON atlas |
 | `script_execute` | Run a custom Lua script |
 | `ws_connect` | Launch Aseprite with WebSocket bridge |
 | `draw_pixels` | Draw pixels on active sprite via WebSocket |
 | `fill_rect` | Fill a rectangle on active sprite via WebSocket |
+
+### Canvas (`tools/canvas.py`)
+
+| Tool | Description |
+|------|-------------|
+| `create_canvas` | Create a new sprite with specified dimensions |
+| `add_layer` | Add a named layer to a sprite |
+| `add_frame` | Add a new frame |
+| `set_frame` | Set active frame by 1-based index |
+| `set_frame_duration` | Set duration of a specific frame (ms) |
+| `set_layer` | Set active layer by name (optionally create it) |
+
+### Drawing (`tools/drawing.py`)
+
+| Tool | Description |
+|------|-------------|
+| `draw_pixels` | Draw multiple pixels on the active cel |
+| `draw_line` | Draw a line with configurable thickness |
+| `draw_rectangle` | Draw an outline or filled rectangle |
+| `fill_area` | Flood-fill from a point |
+| `draw_circle` | Draw an outline or filled circle/ellipse |
+| `draw_pixels_at` | Draw pixels on a specific layer/frame |
+| `draw_line_at` | Draw a line on a specific layer/frame |
+| `draw_rectangle_at` | Draw a rectangle on a specific layer/frame |
+| `draw_circle_at` | Draw a circle on a specific layer/frame |
+| `fill_area_at` | Flood-fill on a specific layer/frame |
+| `draw_polygon` | Draw a polygon on a specific layer/frame |
+| `draw_path` | Draw a polyline path on a specific layer/frame |
+| `apply_gradient_rect` | Apply a linear gradient fill to a rectangle |
+
+### Animation (`tools/animation.py`)
+
+| Tool | Description |
+|------|-------------|
+| `add_frames` | Add multiple frames with optional duration |
+| `set_frame_duration_all` | Set duration for all frames |
+| `set_layer_visibility` | Show or hide a layer by name |
+| `set_layer_opacity` | Set layer opacity (0-255) |
+| `get_sprite_info` | Get structured sprite info (dimensions, frames, layers) |
+| `duplicate_frame_range` | Duplicate a range of frames |
+| `set_cel_position` | Set a cel's position on a specific layer/frame |
+| `tween_cel_positions` | Interpolate cel positions linearly across frames |
+| `offset_cel_positions` | Offset cel positions by a delta across frames |
+| `create_cel` | Create an empty cel on a layer/frame |
+| `clear_cel` | Delete a cel on a layer/frame |
+| `copy_cel` | Copy a cel between frames on the same layer |
+| `copy_frame` | Copy all cels from one frame to another |
+| `propagate_frame_to_range` | Copy a frame's cels to a range of frames |
+| `set_tag` | Create or update an animation tag (with direction) |
+| `tween_cel_positions_eased` | Tween cel positions with easing functions |
+| `oscillate_cel_positions` | Sine-wave oscillation of cel positions |
+| `tween_cel_opacity_eased` | Tween cel opacity with easing functions |
+| `propagate_cels` | Copy cels across specific layers and frame range |
+
+### Export (`tools/export.py`)
+
+| Tool | Description |
+|------|-------------|
+| `export_sprite` | Export sprite to PNG, GIF, etc. via CLI `--save-as` |
+| `copy_sprite` | Copy sprite to a new .aseprite file |
+
+### Palette (`tools/palette.py`)
+
+| Tool | Description |
+|------|-------------|
+| `get_palette` | Get the color palette as hex color list |
+| `set_palette` | Set palette from a list of hex colors |
+| `remap_colors_in_cel_range` | Replace colors in cels across a frame range |
+
+### Pixel Read (`tools/pixel_read.py`)
+
+| Tool | Description |
+|------|-------------|
+| `get_pixel_color` | Read the RGBA color at a single pixel |
+| `get_pixels_rect` | Read all pixels in a rectangular region |
+
+### Preview (`tools/preview.py`)
+
+| Tool | Description |
+|------|-------------|
+| `start_preview_server` | Start an HTTP server for browser preview |
+| `stop_preview_server` | Stop the preview server |
+
+### Scene (`tools/scene.py`)
+
+| Tool | Description |
+|------|-------------|
+| `copy_layers_between_sprites` | Copy named layers from one sprite to another |
+
+### Guide (`tools/guide.py`)
+
+| Tool | Description |
+|------|-------------|
+| `animation_workflow_guide` | Return a text guide for animation workflows |
+
+### Quality (`tools/quality.py`)
+
+| Tool | Description |
+|------|-------------|
+| `ensure_layers_present` | Create missing cels for specified layer/frame combos |
+| `validate_scene` | Check for missing layers and cels |
+| `audit_animation` | Audit for overlaps and out-of-range layer activity |
+| `animation_sanitize` | Validate and fix animation consistency issues |
+
+### Transform (`tools/transform.py`)
+
+| Tool | Description |
+|------|-------------|
+| `flip_layer` | Flip a cel horizontally or vertically |
+| `rotate_layer` | Rotate a cel by 90, 180, or 270 degrees |
+| `resize_canvas` | Resize sprite (scales all content) |
+| `crop_canvas` | Crop sprite to a specified region |
 
 ## MCP Resources
 
@@ -686,6 +810,20 @@ aseprite-mcp --transport stdio
 
 and pipe it to your preferred AI tool.
 
+## Architecture
+
+The server is organized into a modular `tools/` package:
+
+- **Entry point**: `aseprite_mcp.__main__:main`
+- **Server**: `aseprite_mcp/server.py` -- FastMCP server hosting legacy tools, resources, and prompts
+- **Tool modules**: `aseprite_mcp/tools/` -- 11 domain modules, each registering tools via `@mcp.tool()` decorators. Auto-imported by `__init__.py`
+- **CLI wrapper**: `aseprite_mcp/aseprite_cli.py` -- subprocess runner with `execute_lua_script()` method
+- **WebSocket bridge**: `aseprite_mcp/websocket_bridge.py`
+- **Lua generators**: `aseprite_mcp/lua_scripts.py`
+- **Config**: `aseprite_mcp/config.py`
+
+New tools use `execute_lua_script()` which returns a `(success, output)` tuple. Most mutations are wrapped in `app.transaction()` for undo grouping. Frame indices are 1-based (Aseprite Lua convention). Colors use `#RRGGBB` hex strings. Layers are targeted by name.
+
 ## Development
 
 ```bash
@@ -694,6 +832,18 @@ uv run pytest tests/ -v
 uv run ruff check src/ tests/
 uv run mypy src/
 ```
+
+### Test files
+
+- `tests/test_aseprite_cli.py` -- CLI wrapper and `execute_lua_script` tests
+- `tests/test_lua_scripts.py` -- Lua script generation tests
+- `tests/test_server.py` -- legacy MCP tool tests
+- `tests/test_websocket_bridge.py` -- WebSocket bridge tests
+- `tests/test_config.py` -- configuration tests
+- `tests/test_utils.py` -- utility tests
+- `tests/test_main.py` -- entry point tests
+
+All tests mock `subprocess.run`/`subprocess.Popen` -- no Aseprite binary needed.
 
 ## License
 
