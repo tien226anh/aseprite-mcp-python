@@ -6,10 +6,10 @@ import json
 
 from aseprite_mcp import mcp
 from aseprite_mcp.tools._helpers import (
-    get_cli,
-    check_file,
-    validate_hex_color,
     _lua_escape,
+    check_file,
+    get_cli,
+    validate_hex_color,
 )
 
 
@@ -85,7 +85,10 @@ async def set_palette(filename: str, colors: list[str]) -> str:
     for i, color in enumerate(colors):
         result = validate_hex_color(color)
         if result is None:
-            return f"Error: invalid hex color at index {i}: '{color}' (expected format #RRGGBB)"
+            return (
+                f"Error: invalid hex color at index {i}: "
+                f"'{color}' (expected format #RRGGBB)"
+            )
         parsed.append(result)
 
     # Build Lua palette color entries
@@ -138,7 +141,8 @@ async def remap_colors_in_cel_range(
         end_frame: Ending frame index (1-based, inclusive)
         mappings: List of color mappings, each with "from" and "to" hex color strings
         create_missing_cels: If True, create cels that don't exist. Default: False
-        source_frame_index: If set, use this frame as source for new cel images. Default: None
+        source_frame_index: If set, use this frame as source for
+            new cel images. Default: None
     """
     err = check_file(filename)
     if err:
@@ -147,7 +151,10 @@ async def remap_colors_in_cel_range(
     if start_frame < 1:
         return f"Error: start_frame must be >= 1, got {start_frame}"
     if end_frame < start_frame:
-        return f"Error: end_frame must be >= start_frame, got end_frame={end_frame}, start_frame={start_frame}"
+        return (
+            f"Error: end_frame must be >= start_frame, "
+            f"got end_frame={end_frame}, start_frame={start_frame}"
+        )
 
     # Parse all color mappings
     parsed_mappings = []
@@ -155,9 +162,15 @@ async def remap_colors_in_cel_range(
         src = validate_hex_color(m.get("from", ""))
         dst = validate_hex_color(m.get("to", ""))
         if src is None:
-            return f"Error: invalid 'from' hex color at mapping {i}: '{m.get('from', '')}'"
+            return (
+                f"Error: invalid 'from' hex color at mapping {i}: "
+                f"'{m.get('from', '')}'"
+            )
         if dst is None:
-            return f"Error: invalid 'to' hex color at mapping {i}: '{m.get('to', '')}'"
+            return (
+                f"Error: invalid 'to' hex color at mapping {i}: "
+                f"'{m.get('to', '')}'"
+            )
         parsed_mappings.append((src, dst))
 
     safe_layer_name = _lua_escape(layer_name)
@@ -170,7 +183,9 @@ async def remap_colors_in_cel_range(
     mapping_table = ",\n".join(mapping_entries)
 
     create_flag = "true" if create_missing_cels else "false"
-    source_frame_lua = str(source_frame_index) if source_frame_index is not None else "nil"
+    source_frame_lua = (
+        str(source_frame_index) if source_frame_index is not None else "nil"
+    )
 
     script = f"""
 local spr = app.activeSprite

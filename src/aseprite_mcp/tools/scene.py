@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from aseprite_mcp import mcp
-from aseprite_mcp.tools._helpers import get_cli, check_file, _lua_escape
+from aseprite_mcp.tools._helpers import _lua_escape, check_file, get_cli
 
 
 @mcp.tool()
@@ -14,14 +14,16 @@ async def copy_layers_between_sprites(
     replace: bool = True,
     create_missing_frames: bool = True,
 ) -> str:
-    """Copy one or more layers (with their cels) from a source sprite to a target sprite.
+    """Copy one or more layers (with their cels) from a source
+    sprite to a target sprite.
 
     Args:
         source_filename: Path to the source Aseprite file.
         target_filename: Path to the target Aseprite file.
         layer_names: List of layer names to copy from source to target.
         replace: If True, overwrite existing layers in target that share the same name.
-        create_missing_frames: If True, add frames to target if it has fewer frames than source.
+        create_missing_frames: If True, add frames to target if
+            it has fewer frames than source.
     """
     # Path traversal check
     for fn in (source_filename, target_filename):
@@ -42,9 +44,7 @@ async def copy_layers_between_sprites(
     escaped_dst = _lua_escape(target_filename.replace("\\", "/"))
 
     # Build Lua table from layer_names list
-    layer_table_entries = ", ".join(
-        f'"{_lua_escape(name)}"' for name in layer_names
-    )
+    layer_table_entries = ", ".join(f'"{_lua_escape(name)}"' for name in layer_names)
     layer_table = "{" + layer_table_entries + "}"
 
     replace_flag = "true" if replace else "false"
@@ -155,5 +155,8 @@ return "Copied " .. copied .. " layer(s), skipped " .. skipped
 
     success, output = get_cli().execute_lua_script(script)
     if success:
-        return f"Copied layers from {source_filename} to {target_filename}: {output.strip()}"
+        return (
+            f"Copied layers from {source_filename} to "
+            f"{target_filename}: {output.strip()}"
+        )
     return f"Failed to copy layers: {output}"

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 
 from aseprite_mcp import mcp
-from aseprite_mcp.tools._helpers import get_cli, check_file, _lua_escape
+from aseprite_mcp.tools._helpers import _lua_escape, check_file, get_cli
 
 
 @mcp.tool()
@@ -26,7 +26,10 @@ async def export_sprite(
     fmt = format.lower()
     valid_formats = {"png", "gif", "jpg", "jpeg", "bmp", "webp", "aseprite", "ase"}
     if fmt not in valid_formats:
-        return f"Error: unsupported format '{format}'. Valid: {', '.join(sorted(valid_formats))}"
+        return (
+            f"Error: unsupported format '{format}'. "
+            f"Valid: {', '.join(sorted(valid_formats))}"
+        )
 
     # Use Aseprite CLI --save-as for format conversion
     try:
@@ -56,7 +59,10 @@ async def copy_sprite(
         return err
 
     if not overwrite and os.path.exists(output_filename):
-        return f"Error: output file '{output_filename}' already exists. Set overwrite=True to replace it."
+        return (
+            f"Error: output file '{output_filename}' already exists. "
+            f"Set overwrite=True to replace it."
+        )
 
     if not output_filename.lower().endswith((".aseprite", ".ase")):
         return "Error: output_filename must end in .aseprite or .ase"

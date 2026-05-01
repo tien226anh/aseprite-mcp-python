@@ -5,8 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from aseprite_mcp import mcp
-from aseprite_mcp.tools._helpers import check_file, get_cli, validate_hex_color, _lua_escape
-
+from aseprite_mcp.tools._helpers import (
+    _lua_escape,
+    check_file,
+    get_cli,
+    validate_hex_color,
+)
 
 # ---------------------------------------------------------------------------
 # Simple drawing tools (operate on the active cel)
@@ -965,7 +969,11 @@ async def draw_path(
         local color = Color({r}, {g}, {b}, 255)
         local pts = {{ {points_lua} }}
         for i = 1, #pts - 1 do
-            draw_line(img, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y, color, {thickness})
+            draw_line(
+                img, pts[i].x, pts[i].y,
+                pts[i + 1].x, pts[i + 1].y,
+                color, {thickness}
+            )
         end
     end)
 

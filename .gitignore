@@ -39,3 +39,5 @@ Thumbs.db
 tmp_scripts/
 
 .env
+
+generated_assets/

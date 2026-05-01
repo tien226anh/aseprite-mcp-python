@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from aseprite_mcp import mcp
-from aseprite_mcp.tools._helpers import get_cli, check_file, _lua_escape
+from aseprite_mcp.tools._helpers import _lua_escape, check_file, get_cli
 
 
 @mcp.tool()
@@ -53,7 +53,8 @@ local spr = app.activeSprite
 if not spr then print("ERROR:No active sprite") return end
 
 local frameIdx = {frame_index}
-if frameIdx < 1 or frameIdx > #spr.frames then print("ERROR:Frame index out of range") return end
+if frameIdx < 1 or frameIdx > #spr.frames then
+    print("ERROR:Frame index out of range") return end
 {layer_code}
 if not cel then print("ERROR:No cel at that layer/frame") return end
 
@@ -151,7 +152,8 @@ local spr = app.activeSprite
 if not spr then print("ERROR:No active sprite") return end
 
 local frameIdx = {frame_index}
-if frameIdx < 1 or frameIdx > #spr.frames then print("ERROR:Frame index out of range") return end
+if frameIdx < 1 or frameIdx > #spr.frames then
+    print("ERROR:Frame index out of range") return end
 {layer_code}
 if not cel then print("ERROR:No cel at that layer/frame") return end
 

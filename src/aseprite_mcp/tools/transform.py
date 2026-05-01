@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from aseprite_mcp import mcp
-from aseprite_mcp.tools._helpers import get_cli, check_file, _lua_escape
+from aseprite_mcp.tools._helpers import _lua_escape, check_file, get_cli
 
 
 @mcp.tool()
@@ -88,13 +88,15 @@ end
 -- Get cel at frame_index (1-based)
 if {frame_index} > #spr.frames then
     spr:close()
-    return "Error: frame index " .. {frame_index} .. " exceeds total frames (" .. #spr.frames .. ")"
+    return "Error: frame index " .. {frame_index}
+        .. " exceeds total frames (" .. #spr.frames .. ")"
 end
 
 local cel = layer:cel({frame_index})
 if not cel then
     spr:close()
-    return "Error: no cel at frame " .. {frame_index} .. " on layer '" .. "{escaped_layer}" .. "'"
+    return "Error: no cel at frame " .. {frame_index}
+        .. " on layer '" .. "{escaped_layer}" .. "'"
 end
 
 local img = cel.image
@@ -106,12 +108,16 @@ end)
 spr:saveAs(spr.filename)
 spr:close()
 
-return "Flipped layer '" .. "{escaped_layer}" .. "' {direction}ly in frame {frame_index}"
+return "Flipped layer '"
+    .. "{escaped_layer}" .. "' {direction}ly in frame {frame_index}"
 """
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Flipped layer '{layer_name}' {direction}ly in frame {frame_index} of {filename}"
+        return (
+            f"Flipped layer '{layer_name}' {direction}ly "
+            f"in frame {frame_index} of {filename}"
+        )
     return f"Failed to flip layer: {output}"
 
 
@@ -185,7 +191,8 @@ for y = 0, h - 1 do
 end"""
 
         else:  # 270
-            # 270°CW (= 90°CCW): new_img[y][w-1-x] = old_img[x][y]  →  (new_x, new_y) = (y, w-1-x)
+            # 270degCW (= 90degCCW): new_img[y][w-1-x] = old_img[x][y]
+            # -> (new_x, new_y) = (y, w-1-x)
             rotate_logic = """local pixels = {}
 local w = img.width
 local h = img.height
@@ -227,13 +234,15 @@ end
 -- Get cel at frame_index (1-based)
 if {frame_index} > #spr.frames then
     spr:close()
-    return "Error: frame index " .. {frame_index} .. " exceeds total frames (" .. #spr.frames .. ")"
+    return "Error: frame index " .. {frame_index}
+        .. " exceeds total frames (" .. #spr.frames .. ")"
 end
 
 local cel = layer:cel({frame_index})
 if not cel then
     spr:close()
-    return "Error: no cel at frame " .. {frame_index} .. " on layer '" .. "{escaped_layer}" .. "'"
+    return "Error: no cel at frame " .. {frame_index}
+        .. " on layer '" .. "{escaped_layer}" .. "'"
 end
 
 local img = cel.image
@@ -246,12 +255,16 @@ end)
 spr:saveAs(spr.filename)
 spr:close()
 
-return "Rotated layer '" .. "{escaped_layer}" .. "' by {angle} degrees in frame {frame_index}"
+return "Rotated layer '"
+    .. "{escaped_layer}" .. "' by {angle} degrees in frame {frame_index}"
 """
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Rotated layer '{layer_name}' by {angle}° in frame {frame_index} of {filename}"
+        return (
+            f"Rotated layer '{layer_name}' by "
+            f"{angle}\u00b0 in frame {frame_index} of {filename}"
+        )
     return f"Failed to rotate layer: {output}"
 
 
@@ -294,14 +307,12 @@ return "Resized sprite to {width}x{height}"
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Resized {filename} to {width}×{height}"
+        return f"Resized {filename} to {width}x{height}"
     return f"Failed to resize: {output}"
 
 
 @mcp.tool()
-async def crop_canvas(
-    filename: str, x: int, y: int, width: int, height: int
-) -> str:
+async def crop_canvas(filename: str, x: int, y: int, width: int, height: int) -> str:
     """Crop a sprite to the specified region.
 
     Args:

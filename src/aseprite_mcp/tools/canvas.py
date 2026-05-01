@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from aseprite_mcp import mcp
-from aseprite_mcp.tools._helpers import get_cli, check_file, _lua_escape
+from aseprite_mcp.tools._helpers import _lua_escape, check_file, get_cli
 
 
 @mcp.tool()
@@ -124,7 +124,8 @@ local spr = app.activeSprite
 if not spr then return "No active sprite" end
 
 if {frame_index} > #spr.frames then
-    return "Frame index " .. {frame_index} .. " exceeds total frames (" .. #spr.frames .. ")"
+    return "Frame index " .. {frame_index}
+        .. " exceeds total frames (" .. #spr.frames .. ")"
 end
 
 app.activeFrame = spr.frames[{frame_index}]
@@ -165,7 +166,8 @@ local spr = app.activeSprite
 if not spr then return "No active sprite" end
 
 if {frame_index} > #spr.frames then
-    return "Frame index " .. {frame_index} .. " exceeds total frames (" .. #spr.frames .. ")"
+    return "Frame index " .. {frame_index}
+        .. " exceeds total frames (" .. #spr.frames .. ")"
 end
 
 app.transaction(function()

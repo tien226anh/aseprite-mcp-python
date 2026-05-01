@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-import os
-
 from aseprite_mcp import mcp
-from aseprite_mcp.tools._helpers import get_cli, check_file, _lua_escape
-
+from aseprite_mcp.tools._helpers import _lua_escape, check_file, get_cli
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
 
 def _esc_path(filename: str) -> str:
-    """Escape a filename for embedding in a Lua string literal, normalizing backslashes."""
+    """Escape a filename for embedding in a Lua string literal,
+    normalizing backslashes."""
     return _lua_escape(filename.replace("\\", "/"))
 
 
@@ -226,7 +224,8 @@ return "Set layer '" .. target.name .. "' opacity to {opacity}"
 
 @mcp.tool()
 async def get_sprite_info(filename: str) -> str:
-    """Return sprite info as structured text (dimensions, frames, layers with visibility/opacity).
+    """Return sprite info as structured text (dimensions, frames,
+    layers with visibility/opacity).
 
     Args:
         filename: Path to the Aseprite file
@@ -250,13 +249,17 @@ end
 
 table.insert(lines, "  Layers:")
 for _, layer in ipairs(spr.layers) do
-    table.insert(lines, "    " .. layer.name .. " (visible=" .. tostring(layer.visible) .. ", opacity=" .. layer.opacity .. ")")
+    table.insert(lines, "    " .. layer.name
+        .. " (visible=" .. tostring(layer.visible)
+        .. ", opacity=" .. layer.opacity .. ")")
 end
 
 if #spr.tags > 0 then
     table.insert(lines, "  Tags:")
     for _, tag in ipairs(spr.tags) do
-        table.insert(lines, "    " .. tag.name .. ": frames " .. (tag.fromFrame.frameNumber) .. "-" .. (tag.toFrame.frameNumber))
+        table.insert(lines, "    " .. tag.name
+            .. ": frames " .. (tag.fromFrame.frameNumber)
+            .. "-" .. (tag.toFrame.frameNumber))
     end
 end
 
@@ -353,7 +356,8 @@ async def set_cel_position(
         x: New X position for the cel
         y: New Y position for the cel
         create_if_missing: If True, create a cel if none exists at the layer/frame
-        source_frame_index: When creating, copy cel from this frame index (default: frame_index)
+        source_frame_index: When creating, copy cel from this
+            frame index (default: frame_index)
     """
     if frame_index < 1:
         return f"Error: frame_index must be >= 1, got {frame_index}"
@@ -407,12 +411,17 @@ else
 end
 
 spr:saveAs("{esc}")
-return "Set cel position on layer '" .. target.name .. "' at frame {frame_index} to ({x}, {y})"
+return "Set cel position on layer '"
+    .. target.name .. "' at frame {frame_index} "
+    .. "to ({x}, {y})"
 """
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Set cel position on layer '{layer_name}' at frame {frame_index} to ({x}, {y}) in {filename}"
+        return (
+            f"Set cel position on layer '{layer_name}' "
+            f"at frame {frame_index} to ({x}, {y}) in {filename}"
+        )
     return f"Failed to set cel position: {output}"
 
 
@@ -441,7 +450,8 @@ async def tween_cel_positions(
         end_x: X position at the end frame
         end_y: Y position at the end frame
         create_missing_cels: If True, create cels where none exist
-        source_frame_index: Source frame for copying cel content when creating (default: start_frame)
+        source_frame_index: Source frame for copying cel content
+            when creating (default: start_frame)
     """
     if start_frame < 1 or end_frame < 1:
         return "Error: frame indices must be >= 1"
@@ -504,12 +514,17 @@ app.transaction(function()
 end)
 
 spr:saveAs("{esc}")
-return "Tweened cel positions on layer '{esc_layer}' from frame {start_frame}-{end_frame}"
+return "Tweened cel positions on layer "
+    .. "'{esc_layer}' from frame "
+    .. "{start_frame}-{end_frame}"
 """
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Tweened cel positions on layer '{layer_name}' from frame {start_frame}-{end_frame} in {filename}"
+        return (
+            f"Tweened cel positions on layer '{layer_name}' "
+            f"from frame {start_frame}-{end_frame} in {filename}"
+        )
     return f"Failed to tween cel positions: {output}"
 
 
@@ -574,12 +589,18 @@ app.transaction(function()
 end)
 
 spr:saveAs("{esc}")
-return "Offset cel positions on layer '{esc_layer}' frames {start_frame}-{end_frame} by ({dx}, {dy})"
+return "Offset cel positions on layer "
+    .. "'{esc_layer}' frames "
+    .. "{start_frame}-{end_frame} by ({dx}, {dy})"
 """
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Offset cel positions on layer '{layer_name}' frames {start_frame}-{end_frame} by ({dx}, {dy}) in {filename}"
+        return (
+            f"Offset cel positions on layer '{layer_name}' "
+            f"frames {start_frame}-{end_frame} "
+            f"by ({dx}, {dy}) in {filename}"
+        )
     return f"Failed to offset cel positions: {output}"
 
 
@@ -645,7 +666,10 @@ return "Created cel on layer '" .. target.name .. "' at frame {frame_index}"
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Created cel on layer '{layer_name}' at frame {frame_index} at ({x}, {y}) in {filename}"
+        return (
+            f"Created cel on layer '{layer_name}' "
+            f"at frame {frame_index} at ({x}, {y}) in {filename}"
+        )
     return f"Failed to create cel: {output}"
 
 
@@ -703,7 +727,10 @@ return "Deleted cel on layer '" .. target.name .. "' at frame {frame_index}"
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Cleared cel on layer '{layer_name}' at frame {frame_index} in {filename}"
+        return (
+            f"Cleared cel on layer '{layer_name}' "
+            f"at frame {frame_index} in {filename}"
+        )
     return f"Failed to clear cel: {output}"
 
 
@@ -778,12 +805,18 @@ app.transaction(function()
 end)
 
 spr:saveAs("{esc}")
-return "Copied cel on layer '" .. target.name .. "' from frame {source_frame} to {target_frame}"
+return "Copied cel on layer '"
+    .. target.name .. "' from frame "
+    .. "{source_frame} to {target_frame}"
 """
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Copied cel on layer '{layer_name}' from frame {source_frame} to {target_frame} in {filename}"
+        return (
+            f"Copied cel on layer '{layer_name}' "
+            f"from frame {source_frame} to "
+            f"{target_frame} in {filename}"
+        )
     return f"Failed to copy cel: {output}"
 
 
@@ -913,7 +946,9 @@ async def propagate_frame_to_range(
 local spr = app.activeSprite
 if not spr then return "No active sprite" end
 
-if {source_frame} > #spr.frames or {start_frame} > #spr.frames or {end_frame} > #spr.frames then
+if {source_frame} > #spr.frames
+or {start_frame} > #spr.frames
+or {end_frame} > #spr.frames then
     return "Frame index exceeds total frames (" .. #spr.frames .. ")"
 end
 
@@ -948,7 +983,10 @@ return "Propagated frame {source_frame} to frames {start_frame}-{end_frame}"
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Propagated frame {source_frame} to frames {start_frame}-{end_frame} in {filename}"
+        return (
+            f"Propagated frame {source_frame} to "
+            f"frames {start_frame}-{end_frame} in {filename}"
+        )
     return f"Failed to propagate frame: {output}"
 
 
@@ -970,7 +1008,8 @@ async def set_tag(
         name: Tag name
         from_frame: 1-based index of the first frame in the tag
         to_frame: 1-based index of the last frame in the tag
-        direction: Animation direction - "forward", "reverse", or "pingpong" (default: "forward")
+        direction: Animation direction - "forward", "reverse",
+            or "pingpong" (default: "forward")
     """
     valid_directions = {"forward", "reverse", "pingpong"}
     if direction not in valid_directions:
@@ -1028,7 +1067,10 @@ return "Set tag '{esc_name}' frames {from_frame}-{to_frame} direction {direction
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Set tag '{name}' frames {from_frame}-{to_frame} direction {direction} in {filename}"
+        return (
+            f"Set tag '{name}' frames {from_frame}-{to_frame} "
+            f"direction {direction} in {filename}"
+        )
     return f"Failed to set tag: {output}"
 
 
@@ -1060,9 +1102,12 @@ async def tween_cel_positions_eased(
         start_y: Y position at the start frame
         end_x: X position at the end frame
         end_y: Y position at the end frame
-        easing: Easing function - "linear", "ease_in", "ease_out", "ease_in_out", or "smoothstep" (default: "smoothstep")
+        easing: Easing function - "linear", "ease_in",
+            "ease_out", "ease_in_out", or "smoothstep"
+            (default: "smoothstep")
         create_missing_cels: If True, create cels where none exist
-        source_frame_index: Source frame for copying cel content when creating (default: start_frame)
+        source_frame_index: Source frame for copying cel content
+            when creating (default: start_frame)
     """
     valid_easings = {"linear", "ease_in", "ease_out", "ease_in_out", "smoothstep"}
     if easing not in valid_easings:
@@ -1085,7 +1130,11 @@ async def tween_cel_positions_eased(
         "linear": "local function ease(t) return t end",
         "ease_in": "local function ease(t) return t * t * t end",
         "ease_out": "local function ease(t) return 1 - (1 - t) ^ 3 end",
-        "ease_in_out": "local function ease(t) if t < 0.5 then return 4 * t * t * t else return 1 - ((-2 * t + 2) ^ 3) / 2 end end",
+        "ease_in_out": (
+            "local function ease(t) "
+            "if t < 0.5 then return 4 * t * t * t "
+            "else return 1 - ((-2 * t + 2) ^ 3) / 2 end end"
+        ),
         "smoothstep": "local function ease(t) return t * t * (3 - 2 * t) end",
     }[easing]
 
@@ -1145,7 +1194,11 @@ return "Tweened cel positions with '{easing}' easing on layer '{esc_layer}'"
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Tweened cel positions with '{easing}' easing on layer '{layer_name}' frames {start_frame}-{end_frame} in {filename}"
+        return (
+            f"Tweened cel positions with '{easing}' easing "
+            f"on layer '{layer_name}' "
+            f"frames {start_frame}-{end_frame} in {filename}"
+        )
     return f"Failed to tween cel positions: {output}"
 
 
@@ -1174,7 +1227,8 @@ async def oscillate_cel_positions(
         cycles: Number of complete sine wave cycles (default: 1.0)
         phase_deg: Phase offset in degrees (default: 0.0)
         create_missing_cels: If True, create cels where none exist
-        source_frame_index: Source frame for copying cel content when creating (default: start_frame)
+        source_frame_index: Source frame for copying cel content
+            when creating (default: start_frame)
     """
     if start_frame < 1 or end_frame < 1:
         return "Error: frame indices must be >= 1"
@@ -1249,7 +1303,10 @@ app.transaction(function()
                 baseX = srcCel.position.x
                 baseY = srcCel.position.y
                 local newImg = Image(srcCel.image)
-                spr:newCel(target, frame, newImg, Point(baseX + offsetX, baseY + offsetY))
+                spr:newCel(
+                    target, frame, newImg,
+                    Point(baseX + offsetX, baseY + offsetY)
+                )
             else
                 local img = Image(spr.width, spr.height, spr.colorMode)
                 spr:newCel(target, frame, img, Point(offsetX, offsetY))
@@ -1293,9 +1350,12 @@ async def tween_cel_opacity_eased(
         end_frame: 1-based index of the last frame
         start_opacity: Opacity at start (0-255)
         end_opacity: Opacity at end (0-255)
-        easing: Easing function - "linear", "ease_in", "ease_out", "ease_in_out", or "smoothstep" (default: "smoothstep")
+        easing: Easing function - "linear", "ease_in",
+            "ease_out", "ease_in_out", or "smoothstep"
+            (default: "smoothstep")
         create_missing_cels: If True, create cels where none exist
-        source_frame_index: Source frame for copying cel content when creating (default: start_frame)
+        source_frame_index: Source frame for copying cel content
+            when creating (default: start_frame)
     """
     valid_easings = {"linear", "ease_in", "ease_out", "ease_in_out", "smoothstep"}
     if easing not in valid_easings:
@@ -1321,7 +1381,11 @@ async def tween_cel_opacity_eased(
         "linear": "local function ease(t) return t end",
         "ease_in": "local function ease(t) return t * t * t end",
         "ease_out": "local function ease(t) return 1 - (1 - t) ^ 3 end",
-        "ease_in_out": "local function ease(t) if t < 0.5 then return 4 * t * t * t else return 1 - ((-2 * t + 2) ^ 3) / 2 end end",
+        "ease_in_out": (
+            "local function ease(t) "
+            "if t < 0.5 then return 4 * t * t * t "
+            "else return 1 - ((-2 * t + 2) ^ 3) / 2 end end"
+        ),
         "smoothstep": "local function ease(t) return t * t * (3 - 2 * t) end",
     }[easing]
 
@@ -1354,7 +1418,9 @@ app.transaction(function()
     for i = {start_frame}, {end_frame} do
         local t = (i - {start_frame}) / totalSteps
         local et = ease(t)
-        local opacity = math.floor({start_opacity} + ({end_opacity} - {start_opacity}) * et + 0.5)
+        local opacity = math.floor(
+            {start_opacity} + ({end_opacity} - {start_opacity}) * et + 0.5
+        )
         if opacity < 0 then opacity = 0 end
         if opacity > 255 then opacity = 255 end
 
@@ -1386,7 +1452,8 @@ return "Tweened cel opacity with '{easing}' easing on layer '{esc_layer}'"
     if success:
         return (
             f"Tweened cel opacity with '{easing}' easing on layer '{layer_name}' "
-            f"frames {start_frame}-{end_frame} ({start_opacity}->{end_opacity}) in {filename}"
+            f"frames {start_frame}-{end_frame} "
+            f"({start_opacity}->{end_opacity}) in {filename}"
         )
     return f"Failed to tween cel opacity: {output}"
 
@@ -1432,7 +1499,9 @@ async def propagate_cels(
 local spr = app.activeSprite
 if not spr then return "No active sprite" end
 
-if {source_frame} > #spr.frames or {start_frame} > #spr.frames or {end_frame} > #spr.frames then
+if {source_frame} > #spr.frames
+or {start_frame} > #spr.frames
+or {end_frame} > #spr.frames then
     return "Frame index exceeds total frames (" .. #spr.frames .. ")"
 end
 

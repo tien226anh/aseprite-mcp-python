@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 from dataclasses import dataclass, field
@@ -44,11 +45,17 @@ class AsepriteConfig:
             "/usr/lib/aseprite/aseprite",
             "/usr/local/bin/aseprite",
             "/snap/bin/aseprite",
-            str(Path.home() / "aseprite" / "build" / "bin" / "aseprite"),
         ]
+        with contextlib.suppress(RuntimeError):
+            common_paths.append(
+                str(Path.home() / "aseprite" / "build" / "bin" / "aseprite")
+            )
         for p in common_paths:
-            if Path(p).is_file():
-                return p
+            try:
+                if Path(p).is_file():
+                    return p
+            except OSError:
+                continue
         return ""
 
     def ensure_tmp_dir(self) -> None:

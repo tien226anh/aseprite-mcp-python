@@ -8,6 +8,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
+# Import tools package to register all tool modules on the MCP server.
+# Each submodule uses @mcp.tool() decorators that register themselves on import.
+import aseprite_mcp.tools  # noqa: F401
 from aseprite_mcp import mcp
 from aseprite_mcp.aseprite_cli import AsepriteCLI, AsepriteCLIError
 from aseprite_mcp.config import AsepriteConfig
@@ -22,10 +25,6 @@ from aseprite_mcp.utils import (
     validate_sprite_path,
 )
 from aseprite_mcp.websocket_bridge import WebSocketBridge
-
-# Import tools package to register all tool modules on the MCP server.
-# Each submodule uses @mcp.tool() decorators that register themselves on import.
-import aseprite_mcp.tools  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -277,7 +276,8 @@ async def ws_connect(sprite_path: str = "") -> str:
 async def ws_draw_pixels(pixels: list[dict[str, Any]]) -> str:
     """Draw pixels on the active sprite via WebSocket (real-time mode).
 
-    Requires ws_connect to be called first. For file-based pixel drawing, use draw_pixels instead.
+    Requires ws_connect to be called first. For file-based pixel
+    drawing, use draw_pixels instead.
 
     Each pixel is a dict with keys: x (int), y (int), color (hex string like "#ff0000").
 
@@ -300,9 +300,11 @@ async def ws_draw_pixels(pixels: list[dict[str, Any]]) -> str:
 async def ws_fill_rect(
     x: int, y: int, width: int, height: int, color: str
 ) -> str:
-    """Fill a rectangular area on the active sprite via WebSocket (real-time mode).
+    """Fill a rectangular area on the active sprite via WebSocket
+    (real-time mode).
 
-    Requires ws_connect to be called first. For file-based rectangle fill, use fill_rect or draw_rectangle instead.
+    Requires ws_connect to be called first. For file-based rectangle
+    fill, use fill_rect or draw_rectangle instead.
 
     Args:
         x: X position of the rectangle

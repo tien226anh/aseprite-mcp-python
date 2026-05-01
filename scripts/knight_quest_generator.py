@@ -508,7 +508,7 @@ def _generate_knight_walk(hero_dir: Path) -> None:
     # Frame 3: legs neutral
     # Frame 5: right leg forward, left back
     # Frame 7: legs neutral
-    leg_offsets = [
+    _leg_offsets = [
         # (left_leg_dx, left_leg_dy, right_leg_dx, right_leg_dy)
         (0, 0, 0, 0),   # frame 1: neutral
         (-1, 0, 1, 0),   # frame 2: left forward
@@ -519,7 +519,7 @@ def _generate_knight_walk(hero_dir: Path) -> None:
         (2, -1, -2, 0),   # frame 7: stride
         (1, 0, -1, 0),   # frame 8: passing
     ]
-    cape_sway = [0, 1, 2, 1, 0, -1, -2, -1]
+    _cape_sway = [0, 1, 2, 1, 0, -1, -2, -1]
 
     script = f"""
 local spr = Sprite(32, 32)
@@ -803,7 +803,11 @@ app.transaction(function()
     for i = 2, 6 do
         spr:newEmptyFrame()
         -- Copy body, armor, cape from frame 1
-        for _, layer in ipairs({{spr.layers["Body"], spr.layers["Armor"], spr.layers["Cape"]}}) do
+        for _, layer in ipairs({{
+            spr.layers["Body"],
+            spr.layers["Armor"],
+            spr.layers["Cape"],
+        }}) do
             if layer then
                 local src = layer:cel(1)
                 if src and src.image then
@@ -918,7 +922,8 @@ for _, entry in ipairs(all_rows) do
                             if c.alpha > 0 then
                                 local tx = x_off + (fi-1)*s.width + px + cel.position.x
                                 local ty = py + cel.position.y
-                                if tx >= 0 and tx < total_w and ty >= 0 and ty < max_h then
+                                if tx >= 0 and tx < total_w
+                                and ty >= 0 and ty < max_h then
                                     out_img:putPixel(tx, ty, c)
                                 end
                             end
@@ -935,13 +940,13 @@ end
 out:saveAs("{lua_path(out_path)}")
 out:close()
 """
-    success, output = cli.execute_lua_script(script)
+    success, _output = cli.execute_lua_script(script)
     if success and out_path.exists():
         size = out_path.stat().st_size
         print(f"  knight_spritesheet.png ({size:,} bytes)")
     else:
         # Fallback: export idle as spritesheet
-        print(f"  knight_spritesheet.png (fallback from idle)")
+        print("  knight_spritesheet.png (fallback from idle)")
         _export_spritesheet_png(idle_path, out_path)
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 import signal
 import subprocess
@@ -59,10 +60,8 @@ async def start_preview_server(directory: str, port: int = 8000) -> str:
         except (ValueError, OSError):
             pass
         # Stale PID file — remove it
-        try:
+        with contextlib.suppress(OSError):
             os.remove(pid_file)
-        except OSError:
-            pass
 
     # Build the subprocess arguments
     cmd = [sys.executable, "-m", "http.server", str(port)]
@@ -74,7 +73,9 @@ async def start_preview_server(directory: str, port: int = 8000) -> str:
     }
 
     if os.name == "nt":
-        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS  # type: ignore[attr-defined]
+        popen_kwargs["creationflags"] = (  # type: ignore[attr-defined]
+            subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+        )
     else:
         popen_kwargs["start_new_session"] = True  # type: ignore[assignment]
 
@@ -88,11 +89,12 @@ async def start_preview_server(directory: str, port: int = 8000) -> str:
     try:
         proc.wait(timeout=0.5)
         # If we get here, the process exited quickly — something went wrong
-        try:
+        with contextlib.suppress(OSError):
             os.remove(pid_file)
-        except OSError:
-            pass
-        return f"Error: preview server process exited immediately (code {proc.returncode})"
+        return (
+            f"Error: preview server process exited immediately "
+            f"(code {proc.returncode})"
+        )
     except subprocess.TimeoutExpired:
         # Process is still running — expected
         pass
@@ -117,17 +119,13 @@ async def stop_preview_server(port: int = 8000) -> str:
             pid = int(f.read().strip())
     except (ValueError, OSError):
         # Corrupt PID file — clean it up
-        try:
+        with contextlib.suppress(OSError):
             os.remove(pid_file)
-        except OSError:
-            pass
         return f"Stale PID file for port {port} removed"
 
     if not _pid_is_running(pid):
-        try:
+        with contextlib.suppress(OSError):
             os.remove(pid_file)
-        except OSError:
-            pass
         return f"No running server found for port {port} (stale PID file removed)"
 
     # Kill the process
@@ -144,9 +142,7 @@ async def stop_preview_server(port: int = 8000) -> str:
         return f"Error stopping server PID {pid}: {exc}"
 
     # Clean up PID file
-    try:
+    with contextlib.suppress(OSError):
         os.remove(pid_file)
-    except OSError:
-        pass
 
     return f"Preview server on port {port} stopped (PID {pid})"

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import os
 
-from aseprite_mcp.aseprite_cli import AsepriteCLI, AsepriteCLIError
+from aseprite_mcp.aseprite_cli import AsepriteCLI
 from aseprite_mcp.config import AsepriteConfig
-from aseprite_mcp.lua_scripts import _lua_escape
 
 
 def get_cli() -> AsepriteCLI:
@@ -30,8 +29,20 @@ def check_file(filename: str) -> str | None:
     return None
 
 
+def _lua_escape(s: str) -> str:
+    """Escape a string for safe embedding inside a Lua double-quoted string literal."""
+    return (
+        s.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\0", "\\0")
+    )
+
+
 def validate_hex_color(color: str) -> tuple[int, int, int] | None:
-    """Parse a hex color string (#RRGGBB) to (r, g, b) tuple. Returns None if invalid."""
+    """Parse a hex color string (#RRGGBB) to (r, g, b) tuple.
+    Returns None if invalid."""
     if not color:
         return None
     hex_color = color.lstrip("#")
