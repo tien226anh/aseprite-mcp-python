@@ -86,9 +86,13 @@ class TestServerTools:
         parsed = json.loads(result)
         assert parsed["success"] is True
         call_args = mock_cli.run_json_script.call_args[0][0]
-        assert "generated_assets" in call_args or str(
-            config.output_dir
-        ) in call_args
+        # Normalize paths for cross-platform comparison
+        # (Windows backslash vs Lua double-escaped backslash)
+        output_dir_str = str(config.output_dir).replace("\\", "/")
+        assert (
+            "generated_assets" in call_args
+            or output_dir_str in call_args.replace("\\\\", "/")
+        )
 
     @pytest.mark.asyncio
     async def test_spritesheet_export_default_paths(

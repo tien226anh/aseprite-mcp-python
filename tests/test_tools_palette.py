@@ -29,7 +29,9 @@ class TestGetPalette:
     async def test_get_palette_file_not_found(self):
         from aseprite_mcp.tools.palette import get_palette
 
-        with patch("aseprite_mcp.tools.palette.check_file", return_value="File missing"):
+        with patch(
+            "aseprite_mcp.tools.palette.check_file", return_value="File missing"
+        ):
             result = await get_palette(filename="missing.ase")
         assert "missing" in result
 
@@ -71,10 +73,10 @@ class TestSetPalette:
     async def test_set_palette_file_not_found(self):
         from aseprite_mcp.tools.palette import set_palette
 
-        with patch("aseprite_mcp.tools.palette.check_file", return_value="File missing"):
-            result = await set_palette(
-                filename="missing.ase", colors=["#ff0000"]
-            )
+        with patch(
+            "aseprite_mcp.tools.palette.check_file", return_value="File missing"
+        ):
+            result = await set_palette(filename="missing.ase", colors=["#ff0000"])
         assert "missing" in result
 
     @pytest.mark.asyncio

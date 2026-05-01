@@ -47,9 +47,7 @@ class TestAsepriteCLI:
             args=[], returncode=0, stdout=b"ok", stderr=b""
         )
         with patch("subprocess.run", return_value=mock_result) as mock_run:
-            cli.run_batch(
-                args=[], script_content='print("hello")'
-            )
+            cli.run_batch(args=[], script_content='print("hello")')
             mock_run.assert_called_once()
             cmd = mock_run.call_args[0][0]
             assert "--script" in cmd
@@ -84,14 +82,15 @@ class TestAsepriteCLI:
         )
         with patch.object(cli, "run_batch", return_value=mock_result):
             with pytest.raises(AsepriteCLIError) as exc_info:
-                cli.run_script('invalid()')
+                cli.run_script("invalid()")
             assert exc_info.value.returncode == 1
             assert "Error occurred" in exc_info.value.stderr
 
     def test_run_json_script_parses_output(self, cli: AsepriteCLI) -> None:
         json_output = '{"width": 32, "height": 32}'
         with patch.object(
-            cli, "run_script",
+            cli,
+            "run_script",
             return_value=f"some log\nJSON_START{json_output}\n",
         ):
             result = cli.run_json_script("script")
@@ -102,7 +101,7 @@ class TestAsepriteCLI:
             patch.object(cli, "run_script", return_value="no json here"),
             pytest.raises(ValueError, match="No JSON output"),
         ):
-                cli.run_json_script("script")
+            cli.run_json_script("script")
 
     def test_run_json_script_bare_json(self, cli: AsepriteCLI) -> None:
         json_output = '{"result": true}'
@@ -115,7 +114,7 @@ class TestAsepriteCLI:
             patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 60)),
             pytest.raises(AsepriteCLIError, match="timed out"),
         ):
-                cli.run_batch(args=[], timeout=60)
+            cli.run_batch(args=[], timeout=60)
 
     def test_script_file_cleanup(
         self, cli: AsepriteCLI, config: AsepriteConfig
@@ -139,7 +138,8 @@ class TestAsepriteCLI:
 
     def test_list_layers(self, cli: AsepriteCLI) -> None:
         mock_result = subprocess.CompletedProcess(
-            args=[], returncode=0,
+            args=[],
+            returncode=0,
             stdout=b"Background\nLayer 1\nLayer 2",
             stderr=b"",
         )
@@ -149,7 +149,8 @@ class TestAsepriteCLI:
 
     def test_list_tags(self, cli: AsepriteCLI) -> None:
         mock_result = subprocess.CompletedProcess(
-            args=[], returncode=0,
+            args=[],
+            returncode=0,
             stdout=b"walk\ncycle\nidle",
             stderr=b"",
         )
@@ -159,7 +160,8 @@ class TestAsepriteCLI:
 
     def test_list_slices(self, cli: AsepriteCLI) -> None:
         mock_result = subprocess.CompletedProcess(
-            args=[], returncode=0,
+            args=[],
+            returncode=0,
             stdout=b"hitbox\nattack_box",
             stderr=b"",
         )
@@ -201,14 +203,26 @@ class TestExecuteLuaScript:
             args=[], returncode=0, stdout=b"ok", stderr=b""
         )
         with patch.object(cli, "run_batch", return_value=mock_result) as mock_batch:
-            success, output = cli.execute_lua_script(
+            success, _output = cli.execute_lua_script(
                 'print("hello")', filename="test.ase"
             )
         assert success is True
         call_args = mock_batch.call_args
-        assert "test.ase" in call_args[1].get("args", call_args[0][0] if call_args[0] else call_args[1].get("args", []))
+        assert "test.ase" in call_args[1].get(
+            "args", call_args[0][0] if call_args[0] else call_args[1].get("args", [])
+        )
         # Verify script_content was passed
-        assert call_args[1].get("script_content", call_args[0][1] if len(call_args[0]) > 1 else call_args[1].get("script_content")) is not None
+        assert (
+            call_args[1].get(
+                "script_content",
+                (
+                    call_args[0][1]
+                    if len(call_args[0]) > 1
+                    else call_args[1].get("script_content")
+                ),
+            )
+            is not None
+        )
 
     def test_execute_lua_script_failure(self, cli: AsepriteCLI) -> None:
         """execute_lua_script returns (False, stderr) on failure."""
@@ -216,7 +230,7 @@ class TestExecuteLuaScript:
             args=[], returncode=1, stdout=b"", stderr=b"Aseprite error occurred"
         )
         with patch.object(cli, "run_batch", return_value=mock_result):
-            success, output = cli.execute_lua_script('invalid()')
+            success, output = cli.execute_lua_script("invalid()")
         assert success is False
         assert "Aseprite error" in output
 
@@ -226,8 +240,13 @@ class TestExecuteLuaScript:
             args=[], returncode=0, stdout=b"ok", stderr=b""
         )
         with patch.object(cli, "run_batch", return_value=mock_result) as mock_batch:
-            success, output = cli.execute_lua_script('print("hello")')
+            success, _output = cli.execute_lua_script('print("hello")')
         assert success is True
         # Verify empty args list was passed
         call_kwargs = mock_batch.call_args[1]
-        assert call_kwargs.get("args", mock_batch.call_args[0][0] if mock_batch.call_args[0] else []) == []
+        assert (
+            call_kwargs.get(
+                "args", mock_batch.call_args[0][0] if mock_batch.call_args[0] else []
+            )
+            == []
+        )

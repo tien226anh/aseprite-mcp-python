@@ -48,11 +48,12 @@ class TestExportSprite:
 
     @pytest.mark.asyncio
     async def test_export_sprite_success(self, mock_cli):
-        from aseprite_mcp.tools.export import export_sprite
-        from aseprite_mcp.config import AsepriteConfig
         import subprocess
 
-        config = AsepriteConfig(aseprite_path="/usr/bin/aseprite")
+        from aseprite_mcp.config import AsepriteConfig
+        from aseprite_mcp.tools.export import export_sprite
+
+        AsepriteConfig(aseprite_path="/usr/bin/aseprite")
         mock_result = subprocess.CompletedProcess(
             args=[], returncode=0, stdout=b"", stderr=b""
         )
@@ -95,9 +96,7 @@ class TestCopySprite:
         from aseprite_mcp.tools.export import copy_sprite
 
         with patch("aseprite_mcp.tools.export.check_file", return_value=None):
-            result = await copy_sprite(
-                filename="test.ase", output_filename="copy.png"
-            )
+            result = await copy_sprite(filename="test.ase", output_filename="copy.png")
         assert "Error" in result
         assert ".aseprite" in result or ".ase" in result
 
@@ -105,8 +104,10 @@ class TestCopySprite:
     async def test_copy_sprite_success(self, mock_cli):
         from aseprite_mcp.tools.export import copy_sprite
 
-        with patch("aseprite_mcp.tools.export.check_file", return_value=None), \
-             patch("os.path.exists", return_value=False):
+        with (
+            patch("aseprite_mcp.tools.export.check_file", return_value=None),
+            patch("os.path.exists", return_value=False),
+        ):
             result = await copy_sprite(
                 filename="test.ase", output_filename="copy.aseprite"
             )

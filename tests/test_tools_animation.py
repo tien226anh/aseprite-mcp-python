@@ -50,7 +50,10 @@ class TestAddFrames:
     async def test_add_frames_file_not_found(self):
         from aseprite_mcp.tools.animation import add_frames
 
-        with patch("aseprite_mcp.tools.animation.check_file", return_value="File test.ase not found"):
+        with patch(
+            "aseprite_mcp.tools.animation.check_file",
+            return_value="File test.ase not found",
+        ):
             result = await add_frames(filename="test.ase", count=3)
         assert "not found" in result
 
@@ -99,8 +102,12 @@ class TestSetLayerVisibility:
     async def test_set_layer_visibility_file_not_found(self):
         from aseprite_mcp.tools.animation import set_layer_visibility
 
-        with patch("aseprite_mcp.tools.animation.check_file", return_value="File missing"):
-            result = await set_layer_visibility(filename="missing.ase", layer_name="BG", visible=True)
+        with patch(
+            "aseprite_mcp.tools.animation.check_file", return_value="File missing"
+        ):
+            result = await set_layer_visibility(
+                filename="missing.ase", layer_name="BG", visible=True
+            )
         assert "missing" in result
 
     @pytest.mark.asyncio
@@ -142,7 +149,9 @@ class TestSetLayerOpacity:
     async def test_set_layer_opacity_file_not_found(self):
         from aseprite_mcp.tools.animation import set_layer_opacity
 
-        with patch("aseprite_mcp.tools.animation.check_file", return_value="File missing"):
+        with patch(
+            "aseprite_mcp.tools.animation.check_file", return_value="File missing"
+        ):
             result = await set_layer_opacity(
                 filename="missing.ase", layer_name="BG", opacity=128
             )
@@ -165,7 +174,9 @@ class TestGetSpriteInfo:
     async def test_get_sprite_info_file_not_found(self):
         from aseprite_mcp.tools.animation import get_sprite_info
 
-        with patch("aseprite_mcp.tools.animation.check_file", return_value="File missing"):
+        with patch(
+            "aseprite_mcp.tools.animation.check_file", return_value="File missing"
+        ):
             result = await get_sprite_info(filename="missing.ase")
         assert "missing" in result
 
@@ -189,7 +200,11 @@ class TestSetTag:
 
         with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
             result = await set_tag(
-                filename="test.ase", name="walk", from_frame=1, to_frame=4, direction="sideways"
+                filename="test.ase",
+                name="walk",
+                from_frame=1,
+                to_frame=4,
+                direction="sideways",
             )
         assert "Error" in result
         assert "direction" in result
@@ -217,7 +232,9 @@ class TestSetTag:
     async def test_set_tag_file_not_found(self):
         from aseprite_mcp.tools.animation import set_tag
 
-        with patch("aseprite_mcp.tools.animation.check_file", return_value="File missing"):
+        with patch(
+            "aseprite_mcp.tools.animation.check_file", return_value="File missing"
+        ):
             result = await set_tag(
                 filename="missing.ase", name="walk", from_frame=1, to_frame=4
             )
@@ -229,7 +246,11 @@ class TestSetTag:
 
         with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
             result = await set_tag(
-                filename="test.ase", name="walk", from_frame=1, to_frame=4, direction="forward"
+                filename="test.ase",
+                name="walk",
+                from_frame=1,
+                to_frame=4,
+                direction="forward",
             )
         assert "walk" in result
         mock_cli.execute_lua_script.assert_called_once()

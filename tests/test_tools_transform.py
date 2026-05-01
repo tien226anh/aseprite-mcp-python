@@ -31,7 +31,10 @@ class TestFlipLayer:
 
         with patch("aseprite_mcp.tools.transform.check_file", return_value=None):
             result = await flip_layer(
-                filename="test.ase", layer_name="BG", frame_index=1, direction="diagonal"
+                filename="test.ase",
+                layer_name="BG",
+                frame_index=1,
+                direction="diagonal",
             )
         assert "Error" in result
         assert "direction" in result
@@ -40,7 +43,9 @@ class TestFlipLayer:
     async def test_flip_layer_file_not_found(self):
         from aseprite_mcp.tools.transform import flip_layer
 
-        with patch("aseprite_mcp.tools.transform.check_file", return_value="File missing"):
+        with patch(
+            "aseprite_mcp.tools.transform.check_file", return_value="File missing"
+        ):
             result = await flip_layer(
                 filename="missing.ase", layer_name="BG", frame_index=1
             )
@@ -73,7 +78,10 @@ class TestFlipLayer:
 
         with patch("aseprite_mcp.tools.transform.check_file", return_value=None):
             result = await flip_layer(
-                filename="test.ase", layer_name="BG", frame_index=1, direction="horizontal"
+                filename="test.ase",
+                layer_name="BG",
+                frame_index=1,
+                direction="horizontal",
             )
         assert "Flipped" in result
         mock_cli.execute_lua_script.assert_called_once()
@@ -86,7 +94,10 @@ class TestFlipLayer:
 
         with patch("aseprite_mcp.tools.transform.check_file", return_value=None):
             result = await flip_layer(
-                filename="test.ase", layer_name="BG", frame_index=1, direction="vertical"
+                filename="test.ase",
+                layer_name="BG",
+                frame_index=1,
+                direction="vertical",
             )
         assert "Flipped" in result
         script = mock_cli.execute_lua_script.call_args[0][0]
@@ -120,7 +131,9 @@ class TestRotateLayer:
     async def test_rotate_layer_file_not_found(self):
         from aseprite_mcp.tools.transform import rotate_layer
 
-        with patch("aseprite_mcp.tools.transform.check_file", return_value="File missing"):
+        with patch(
+            "aseprite_mcp.tools.transform.check_file", return_value="File missing"
+        ):
             result = await rotate_layer(
                 filename="missing.ase", layer_name="BG", frame_index=1
             )
@@ -189,7 +202,9 @@ class TestResizeCanvas:
     async def test_resize_canvas_file_not_found(self):
         from aseprite_mcp.tools.transform import resize_canvas
 
-        with patch("aseprite_mcp.tools.transform.check_file", return_value="File missing"):
+        with patch(
+            "aseprite_mcp.tools.transform.check_file", return_value="File missing"
+        ):
             result = await resize_canvas(filename="missing.ase", width=64, height=64)
         assert "missing" in result
 
@@ -209,7 +224,9 @@ class TestCropCanvas:
         from aseprite_mcp.tools.transform import crop_canvas
 
         with patch("aseprite_mcp.tools.transform.check_file", return_value=None):
-            result = await crop_canvas(filename="test.ase", x=0, y=0, width=0, height=10)
+            result = await crop_canvas(
+                filename="test.ase", x=0, y=0, width=0, height=10
+            )
         assert "Error" in result
         assert "width" in result
 
@@ -218,7 +235,9 @@ class TestCropCanvas:
         from aseprite_mcp.tools.transform import crop_canvas
 
         with patch("aseprite_mcp.tools.transform.check_file", return_value=None):
-            result = await crop_canvas(filename="test.ase", x=0, y=0, width=10, height=-5)
+            result = await crop_canvas(
+                filename="test.ase", x=0, y=0, width=10, height=-5
+            )
         assert "Error" in result
         assert "height" in result
 
@@ -236,7 +255,9 @@ class TestCropCanvas:
     async def test_crop_canvas_file_not_found(self):
         from aseprite_mcp.tools.transform import crop_canvas
 
-        with patch("aseprite_mcp.tools.transform.check_file", return_value="File missing"):
+        with patch(
+            "aseprite_mcp.tools.transform.check_file", return_value="File missing"
+        ):
             result = await crop_canvas(
                 filename="missing.ase", x=0, y=0, width=10, height=10
             )

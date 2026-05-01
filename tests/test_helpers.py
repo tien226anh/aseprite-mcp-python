@@ -2,11 +2,6 @@
 
 from __future__ import annotations
 
-import os
-import tempfile
-
-import pytest
-
 from aseprite_mcp.tools._helpers import check_file, validate_hex_color
 
 

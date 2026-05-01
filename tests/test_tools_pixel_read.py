@@ -29,7 +29,9 @@ class TestGetPixelColor:
     async def test_get_pixel_color_file_not_found(self):
         from aseprite_mcp.tools.pixel_read import get_pixel_color
 
-        with patch("aseprite_mcp.tools.pixel_read.check_file", return_value="File missing"):
+        with patch(
+            "aseprite_mcp.tools.pixel_read.check_file", return_value="File missing"
+        ):
             result = await get_pixel_color(filename="missing.ase", x=5, y=10)
         assert "missing" in result
 
@@ -38,9 +40,7 @@ class TestGetPixelColor:
         from aseprite_mcp.tools.pixel_read import get_pixel_color
 
         with patch("aseprite_mcp.tools.pixel_read.check_file", return_value=None):
-            result = await get_pixel_color(
-                filename="test.ase", x=0, y=0, frame_index=0
-            )
+            result = await get_pixel_color(filename="test.ase", x=0, y=0, frame_index=0)
         assert "Error" in result
         assert "frame_index" in result
 
@@ -53,9 +53,7 @@ class TestGetPixelColor:
             "PIXEL:255,0,0,128",
         )
         with patch("aseprite_mcp.tools.pixel_read.check_file", return_value=None):
-            result = await get_pixel_color(
-                filename="test.ase", x=5, y=10
-            )
+            result = await get_pixel_color(filename="test.ase", x=5, y=10)
         assert "#ff0000" in result
         mock_cli.execute_lua_script.assert_called_once()
         # Verify filename passed as second arg
@@ -67,9 +65,7 @@ class TestGetPixelColor:
 
         mock_cli.execute_lua_script.return_value = (False, "Aseprite error")
         with patch("aseprite_mcp.tools.pixel_read.check_file", return_value=None):
-            result = await get_pixel_color(
-                filename="test.ase", x=0, y=0
-            )
+            result = await get_pixel_color(filename="test.ase", x=0, y=0)
         assert "Failed" in result
 
     @pytest.mark.asyncio
@@ -81,7 +77,7 @@ class TestGetPixelColor:
             "PIXEL:100,200,50,255",
         )
         with patch("aseprite_mcp.tools.pixel_read.check_file", return_value=None):
-            result = await get_pixel_color(
+            await get_pixel_color(
                 filename="test.ase", x=0, y=0, layer_name="BG"
             )
         mock_cli.execute_lua_script.assert_called_once()
@@ -94,7 +90,9 @@ class TestGetPixelsRect:
     async def test_get_pixels_rect_file_not_found(self):
         from aseprite_mcp.tools.pixel_read import get_pixels_rect
 
-        with patch("aseprite_mcp.tools.pixel_read.check_file", return_value="File missing"):
+        with patch(
+            "aseprite_mcp.tools.pixel_read.check_file", return_value="File missing"
+        ):
             result = await get_pixels_rect(
                 filename="missing.ase", x=0, y=0, width=10, height=10
             )

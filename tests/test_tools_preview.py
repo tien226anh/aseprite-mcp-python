@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import os
 import subprocess
-import sys
-import tempfile
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,7 +20,7 @@ class TestStartPreviewServer:
 
     @pytest.mark.asyncio
     async def test_start_preview_server_success(self, tmp_path):
-        from aseprite_mcp.tools.preview import start_preview_server, _pid_path
+        from aseprite_mcp.tools.preview import _pid_path, start_preview_server
 
         # Clean up any existing PID file
         pid_file = _pid_path(8000)
@@ -43,7 +41,7 @@ class TestStartPreviewServer:
 
     @pytest.mark.asyncio
     async def test_start_preview_server_already_running(self, tmp_path):
-        from aseprite_mcp.tools.preview import start_preview_server, _pid_path
+        from aseprite_mcp.tools.preview import _pid_path, start_preview_server
 
         pid_file = _pid_path(8001)
 
@@ -52,12 +50,8 @@ class TestStartPreviewServer:
             f.write(str(os.getpid()))
 
         try:
-            with patch(
-                "aseprite_mcp.tools.preview._pid_is_running", return_value=True
-            ):
-                result = await start_preview_server(
-                    directory=str(tmp_path), port=8001
-                )
+            with patch("aseprite_mcp.tools.preview._pid_is_running", return_value=True):
+                result = await start_preview_server(directory=str(tmp_path), port=8001)
             assert "already running" in result
         finally:
             if os.path.exists(pid_file):
@@ -67,7 +61,7 @@ class TestStartPreviewServer:
 class TestStopPreviewServer:
     @pytest.mark.asyncio
     async def test_stop_preview_server_no_pid_file(self):
-        from aseprite_mcp.tools.preview import stop_preview_server, _pid_path
+        from aseprite_mcp.tools.preview import _pid_path, stop_preview_server
 
         pid_file = _pid_path(9999)
         # Ensure no PID file exists
@@ -75,11 +69,13 @@ class TestStopPreviewServer:
             os.remove(pid_file)
 
         result = await stop_preview_server(port=9999)
-        assert "no" in result.lower() and "PID" in result.upper() or "No preview server" in result
+        assert (
+            "no" in result.lower() and "PID" in result.upper()
+        ) or "No preview server" in result
 
     @pytest.mark.asyncio
     async def test_stop_preview_server_stale_pid(self):
-        from aseprite_mcp.tools.preview import stop_preview_server, _pid_path
+        from aseprite_mcp.tools.preview import _pid_path, stop_preview_server
 
         pid_file = _pid_path(9998)
         # Write a stale PID (non-existent PID)

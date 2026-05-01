@@ -90,7 +90,9 @@ class TestAddLayer:
     async def test_add_layer_file_not_found(self):
         from aseprite_mcp.tools.canvas import add_layer
 
-        with patch("aseprite_mcp.tools.canvas.check_file", return_value="File not found"):
+        with patch(
+            "aseprite_mcp.tools.canvas.check_file", return_value="File not found"
+        ):
             result = await add_layer(filename="nonexistent.ase", layer_name="Layer1")
         assert "not found" in result
 
@@ -160,7 +162,9 @@ class TestSetLayer:
     async def test_set_layer_file_not_found(self):
         from aseprite_mcp.tools.canvas import set_layer
 
-        with patch("aseprite_mcp.tools.canvas.check_file", return_value="File not found"):
+        with patch(
+            "aseprite_mcp.tools.canvas.check_file", return_value="File not found"
+        ):
             result = await set_layer(filename="missing.ase", layer_name="BG")
         assert "not found" in result
 
