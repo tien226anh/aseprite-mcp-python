@@ -180,3 +180,54 @@ class TestAsepriteCLI:
         assert str(err) == "test error"
         assert err.returncode == 42
         assert err.stderr == "stderr output"
+
+
+class TestExecuteLuaScript:
+    """Tests for AsepriteCLI.execute_lua_script method."""
+
+    def test_execute_lua_script_success(self, cli: AsepriteCLI) -> None:
+        """execute_lua_script returns (True, stdout) on success."""
+        mock_result = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout=b"Script output here", stderr=b""
+        )
+        with patch.object(cli, "run_batch", return_value=mock_result):
+            success, output = cli.execute_lua_script('print("hello")')
+        assert success is True
+        assert "Script output here" in output
+
+    def test_execute_lua_script_with_filename(self, cli: AsepriteCLI) -> None:
+        """execute_lua_script passes filename as arg to run_batch."""
+        mock_result = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout=b"ok", stderr=b""
+        )
+        with patch.object(cli, "run_batch", return_value=mock_result) as mock_batch:
+            success, output = cli.execute_lua_script(
+                'print("hello")', filename="test.ase"
+            )
+        assert success is True
+        call_args = mock_batch.call_args
+        assert "test.ase" in call_args[1].get("args", call_args[0][0] if call_args[0] else call_args[1].get("args", []))
+        # Verify script_content was passed
+        assert call_args[1].get("script_content", call_args[0][1] if len(call_args[0]) > 1 else call_args[1].get("script_content")) is not None
+
+    def test_execute_lua_script_failure(self, cli: AsepriteCLI) -> None:
+        """execute_lua_script returns (False, stderr) on failure."""
+        mock_result = subprocess.CompletedProcess(
+            args=[], returncode=1, stdout=b"", stderr=b"Aseprite error occurred"
+        )
+        with patch.object(cli, "run_batch", return_value=mock_result):
+            success, output = cli.execute_lua_script('invalid()')
+        assert success is False
+        assert "Aseprite error" in output
+
+    def test_execute_lua_script_no_filename(self, cli: AsepriteCLI) -> None:
+        """execute_lua_script works without a filename (empty args)."""
+        mock_result = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout=b"ok", stderr=b""
+        )
+        with patch.object(cli, "run_batch", return_value=mock_result) as mock_batch:
+            success, output = cli.execute_lua_script('print("hello")')
+        assert success is True
+        # Verify empty args list was passed
+        call_kwargs = mock_batch.call_args[1]
+        assert call_kwargs.get("args", mock_batch.call_args[0][0] if mock_batch.call_args[0] else []) == []

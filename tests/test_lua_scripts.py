@@ -116,3 +116,15 @@ class TestLuaEscape:
 
     def test_no_escape_needed(self) -> None:
         assert _lua_escape("/simple/path") == "/simple/path"
+
+    def test_escapes_newline(self) -> None:
+        assert _lua_escape("line1\nline2") == "line1\\nline2"
+
+    def test_escapes_carriage_return(self) -> None:
+        assert _lua_escape("line1\rline2") == "line1\\rline2"
+
+    def test_escapes_null_byte(self) -> None:
+        assert _lua_escape("before\0after") == "before\\0after"
+
+    def test_escapes_mixed_special_chars(self) -> None:
+        assert _lua_escape('a\\b"c\nd') == 'a\\\\b\\"c\\nd'

@@ -163,7 +163,7 @@ class TestServerTools:
         assert parsed["status"] == "launched"
 
     @pytest.mark.asyncio
-    async def test_draw_pixels_no_connection(self) -> None:
+    async def test_ws_draw_pixels_no_connection(self) -> None:
         from aseprite_mcp import server as srv
         from aseprite_mcp.websocket_bridge import WebSocketBridge
 
@@ -173,7 +173,7 @@ class TestServerTools:
         )
         srv._ws_bridge = mock_bridge
 
-        result = await srv.draw_pixels(pixels=[{"x": 0, "y": 0, "color": "#ff0000"}])
+        result = await srv.ws_draw_pixels(pixels=[{"x": 0, "y": 0, "color": "#ff0000"}])
         assert "Error" in result
         assert "ws_connect" in result
 
