@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from aseprite_mcp import mcp
-from aseprite_mcp.tools._helpers import get_cli, check_file, _lua_escape
-
+from aseprite_mcp.tools._helpers import _lua_escape, check_file, get_cli
 
 # ---------------------------------------------------------------------------
 # Parsing helpers
@@ -151,7 +150,8 @@ async def ensure_layers_present(
         "spr:saveAs(spr.filename)\n"
         "spr:close()\n"
         "\n"
-        'return "Created " .. created .. " cel(s), skipped " .. skipped .. " layer(s)"\n'
+        'return "Created " .. created .. " cel(s), '
+        'skipped " .. skipped .. " layer(s)"\n'
     )
 
     success, output = get_cli().execute_lua_script(script)
@@ -244,19 +244,23 @@ async def validate_scene(
         "-- Build JSON manually using table.concat\n"
         "local parts = {}\n"
         'table.insert(parts, \'{"frames":\' .. total_frames)\n'
-        'table.insert(parts, \',"range":{"start":\' .. start_idx .. \',"end":\' .. end_idx .. \'}\')\n'
+        'table.insert(parts, \',"range":{"start":\' '
+        '.. start_idx .. \',"end":\' .. end_idx .. \'}\')\n'
         "-- missing_layers array\n"
         "local ml_parts = {}\n"
         "for i, name in ipairs(missing_layers) do\n"
         '    ml_parts[i] = \'"\' .. name .. \'"\'\n'
         "end\n"
-        'table.insert(parts, \',"missing_layers":[\' .. table.concat(ml_parts, ",") .. \']\')\n'
+        'table.insert(parts, \',"missing_layers":[\' '
+        '.. table.concat(ml_parts, \",\") .. \']\')\n'
         "-- missing_cels array\n"
         "local mc_parts = {}\n"
         "for i, mc in ipairs(missing_cels) do\n"
-        '    mc_parts[i] = \'{"layer":"\' .. mc.layer .. \'","frame":\' .. mc.frame .. \'}\'\n'
+        '    mc_parts[i] = \'{"layer":"\' '
+        '.. mc.layer .. \'","frame":\' .. mc.frame .. \'}\'\n'
         "end\n"
-        'table.insert(parts, \',"missing_cels":[\' .. table.concat(mc_parts, ",") .. \']\')\n'
+        'table.insert(parts, \',"missing_cels\":[\' '
+        '.. table.concat(mc_parts, \",\") .. \']\')\n'
         'table.insert(parts, \'}\')\n'
         "\n"
         "spr:close()\n"
@@ -298,7 +302,8 @@ async def audit_animation(
         start_frame: First frame (1-based, inclusive). Default 1.
         end_frame: Last frame (1-based, inclusive). None = last frame.
         layer_names: Only audit these layers. None = all layers.
-        overlap_pairs: Layer pairs to check for overlapping pixels, e.g. ["layerA,layerB"].
+        overlap_pairs: Layer pairs to check for overlapping pixels,
+            e.g. ["layerA,layerB"].
         layer_frame_ranges: Expected frame ranges per layer, e.g. ["clouds:1-12"].
             Cels outside these ranges are reported as out-of-range.
         report_cels: Include per-frame cel details in output. Default False.
@@ -381,7 +386,10 @@ async def audit_animation(
         "        local cel = layer:cel(frame)\n"
         "        if cel and cel.image then\n"
         "            total_cels = total_cels + 1\n"
-        "            local info = { name = layer.name, x = cel.position.x, y = cel.position.y, w = cel.image.width, h = cel.image.height, opacity = cel.opacity }\n"
+        "            local info = { name = layer.name, "
+        "x = cel.position.x, y = cel.position.y, "
+        "w = cel.image.width, h = cel.image.height, "
+        "opacity = cel.opacity }\n"
         "            table.insert(frame_info.layers, info)\n"
         "        end\n"
         "    end\n"
@@ -412,12 +420,23 @@ async def audit_animation(
         "                local by1 = celB.position.y\n"
         "                local bx2 = bx1 + celB.image.width\n"
         "                local by2 = by1 + celB.image.height\n"
-        "                local overlaps = not (ax2 <= bx1 or bx2 <= ax1 or ay2 <= by1 or by2 <= ay1)\n"
+        "                local overlaps = not (ax2 <= bx1 "
+        "or bx2 <= ax1 or ay2 <= by1 or by2 <= ay1)\n"
         "                if overlaps then\n"
-        '                    local entry = \'{"frame":\' .. fi .. \',"layers":["\' .. nameA .. \'","\' .. nameB .. \'"]\'\n'
+        '                    local entry = \'{"frame":\' '
+        '.. fi .. \',"layers":["\' .. nameA '
+        '.. \'","\' .. nameB .. \'"]\'\n'
         "                    if report_bounds then\n"
-        '                        entry = entry .. \',"boundsA":{"x":\' .. ax1 .. \',"y":\' .. ay1 .. \',"w":\' .. celA.image.width .. \',"h":\' .. celA.image.height .. \'}\'\n'
-        '                        entry = entry .. \',"boundsB":{"x":\' .. bx1 .. \',"y":\' .. by1 .. \',"w":\' .. celB.image.width .. \',"h":\' .. celB.image.height .. \'}\'\n'
+        '                        entry = entry '
+        '.. \',"boundsA":{"x":\' .. ax1 '
+        '.. \',"y":\' .. ay1 .. \',"w":\' '
+        '.. celA.image.width .. \',"h":\' '
+        '.. celA.image.height .. \'}\'\n'
+        '                        entry = entry '
+        '.. \',"boundsB":{"x":\' .. bx1 '
+        '.. \',"y":\' .. by1 .. \',"w":\' '
+        '.. celB.image.width .. \',"h":\' '
+        '.. celB.image.height .. \'}\'\n'
         "                    end\n"
         '                    entry = entry .. \'}\'\n'
         "                    table.insert(overlap_entries, entry)\n"
@@ -446,7 +465,9 @@ async def audit_animation(
         "                        end\n"
         "                    end\n"
         "                    if not in_range then\n"
-        '                        table.insert(out_of_range_entries, \'{"layer":"\' .. layer_name .. \'","frame":\' .. fi .. \'}\')\n'
+        '                        table.insert(out_of_range_entries, '
+        '\'{"layer":"\' .. layer_name '
+        '.. \'","frame":\' .. fi .. \'}\')\n'
         "                    end\n"
         "                end\n"
         "            end\n"
@@ -457,14 +478,23 @@ async def audit_animation(
         "-- Build JSON output\n"
         "local parts = {}\n"
         'table.insert(parts, \'{"frames":\' .. #spr.frames)\n'
-        'table.insert(parts, \',"summary":{"total_layers":\' .. #spr.layers .. \',"layers_checked":\' .. #all_layers .. \',"total_cels":\' .. total_cels)\n'
-        'table.insert(parts, \',"overlaps_count":\' .. #overlap_entries .. \',"out_of_range_count":\' .. #out_of_range_entries .. \'}\')\n'
+        'table.insert(parts, \',"summary":{"total_layers":\' '
+        '.. #spr.layers .. \',"layers_checked":\' '
+        '.. #all_layers .. \',"total_cels":\' '
+        '.. total_cels)\n'
+        'table.insert(parts, \',"overlaps_count":\' '
+        '.. #overlap_entries '
+        '.. \',"out_of_range_count":\' '
+        '.. #out_of_range_entries .. \'}\')\n'
         "\n"
         "-- overlaps\n"
-        'table.insert(parts, \',"overlaps":[\' .. table.concat(overlap_entries, ",") .. \']\')\n'
+        'table.insert(parts, \',"overlaps\":[\' '
+        '.. table.concat(overlap_entries, \",\") .. \']\')\n'
         "\n"
         "-- out_of_range\n"
-        'table.insert(parts, \',"out_of_range":[\' .. table.concat(out_of_range_entries, ",") .. \']\')\n'
+        'table.insert(parts, \',"out_of_range\":[\' '
+        '.. table.concat(out_of_range_entries, \",\") '
+        '.. \']\')\n'
         "\n"
         "-- cel_details (optional)\n"
         "if report_cels then\n"
@@ -472,11 +502,19 @@ async def audit_animation(
         "    for _, fi in ipairs(cel_details) do\n"
         "        local layer_parts = {}\n"
         "        for j, li in ipairs(fi.layers) do\n"
-        '            layer_parts[j] = \'{"name":"\' .. li.name .. \'","x":\' .. li.x .. \',"y":\' .. li.y .. \',"w":\' .. li.w .. \',"h":\' .. li.h .. \',"opacity":\' .. li.opacity .. \'}\'\n'
+        '            layer_parts[j] = \'{"name":"\' '
+        '.. li.name .. \'","x":\' .. li.x '
+        '.. \',"y":\' .. li.y .. \',"w":\' '
+        '.. li.w .. \',"h":\' .. li.h '
+        '.. \',"opacity":\' .. li.opacity .. \'}\'\n'
         "        end\n"
-        '        cd_parts[#cd_parts + 1] = \'{"frame":\' .. fi.frame .. \',"layers":[\' .. table.concat(layer_parts, ",") .. \']}\'\n'
+        '        cd_parts[#cd_parts + 1] = \'{"frame":\' '
+        '.. fi.frame .. \',"layers\":[\' '
+        '.. table.concat(layer_parts, \",\") '
+        '.. \']}\'\n'
         "    end\n"
-        '    table.insert(parts, \',"cel_details":[\' .. table.concat(cd_parts, ",") .. \']\')\n'
+        '    table.insert(parts, \',"cel_details\":[\' '
+        '.. table.concat(cd_parts, \",\") .. \']\')\n'
         "end\n"
         "\n"
         'table.insert(parts, \'}\')\n'
@@ -531,8 +569,11 @@ async def animation_sanitize(
         overlap_pairs: Layer pairs to check for overlaps, e.g. ["layerA,layerB"].
         report_bounds: Include bounding box info in overlap reports. Default False.
         max_overlaps: Maximum overlap entries to report. Default 200.
-        ignore_full_canvas_overlaps: Skip overlaps where either cel covers the full canvas. Default True.
-        out_of_range_action: Action for out-of-range cels: "set_opacity_zero", "delete_cels", or "none". Default "set_opacity_zero".
+        ignore_full_canvas_overlaps: Skip overlaps where either cel
+            covers the full canvas. Default True.
+        out_of_range_action: Action for out-of-range cels:
+            "set_opacity_zero", "delete_cels", or "none".
+            Default "set_opacity_zero".
         out_of_range_opacity: Opacity value for "set_opacity_zero" action. Default 0.
         report_only: If True, only report issues without making changes. Default False.
         include_stats: Include per-layer statistics in output. Default True.
@@ -647,7 +688,8 @@ async def animation_sanitize(
         "    local reorder_ok = true\n"
         "    for _, name in ipairs(layer_order) do\n"
         "        if not layer_lookup[name] then\n"
-        '            table.insert(alerts, \'Layer "\' .. name .. \'" not found for reordering\')\n'
+        '            table.insert(alerts, '
+        '\'Layer "\' .. name .. \'" not found for reordering\')\n'
         "            reorder_ok = false\n"
         "        end\n"
         "    end\n"
@@ -673,7 +715,9 @@ async def animation_sanitize(
         "        for _, lname in ipairs(ensure_layer_names) do\n"
         "            local layer = layer_lookup[lname]\n"
         "            if not layer then\n"
-        '                table.insert(alerts, \'Layer "\' .. lname .. \'" not found for ensuring cels\')\n'
+        '                table.insert(alerts, '
+        '\'Layer "\' .. lname '
+        '.. \'" not found for ensuring cels\')\n'
         "                goto continue_ensure\n"
         "            end\n"
         "            for fi = start_idx, end_idx do\n"
@@ -690,7 +734,8 @@ async def animation_sanitize(
         "    end)\n"
         "    if created_count > 0 then\n"
         "        changed = true\n"
-        '        table.insert(alerts, "Created " .. created_count .. " missing cel(s)")\n'
+        '        table.insert(alerts, '
+        '"Created " .. created_count .. " missing cel(s)")\n'
         "    end\n"
         "end\n"
         "\n"
@@ -715,17 +760,24 @@ async def animation_sanitize(
         "                        end\n"
         "                    end\n"
         "                    if not in_range then\n"
-        '                        local entry = \'{"layer":"\' .. layer_name .. \'","frame":\' .. fi .. \'}\'\n'
-        "                        table.insert(out_of_range_entries, entry)\n"
+        '                        local entry = \'{"layer":"\' '
+        '.. layer_name .. \'","frame":\' '
+        '.. fi .. \'}\'\n'
+        "                        table.insert("
+        "out_of_range_entries, entry)\n"
         "\n"
         "                        if not report_only then\n"
         '                            if out_of_range_action == "delete_cels" then\n'
         "                                spr:deleteCel(cel)\n"
         "                                oor_deleted = oor_deleted + 1\n"
         "                                changed = true\n"
-        '                            elseif out_of_range_action == "set_opacity_zero" then\n'
+        '                            elseif '
+        'out_of_range_action == "set_opacity_zero" '
+        'then\n'
         "                                cel.opacity = out_of_range_opacity\n"
-        "                                oor_opacity_changed = oor_opacity_changed + 1\n"
+        "                                "
+        "oor_opacity_changed = "
+        "oor_opacity_changed + 1\n"
         "                                changed = true\n"
         "                            end\n"
         "                        end\n"
@@ -737,10 +789,14 @@ async def animation_sanitize(
         "end\n"
         "\n"
         "if oor_deleted > 0 then\n"
-        '    table.insert(alerts, "Deleted " .. oor_deleted .. " out-of-range cel(s)")\n'
+        '    table.insert(alerts, '
+        '"Deleted " .. oor_deleted '
+        '.. " out-of-range cel(s)")\n'
         "end\n"
         "if oor_opacity_changed > 0 then\n"
-        '    table.insert(alerts, "Set opacity on " .. oor_opacity_changed .. " out-of-range cel(s)")\n'
+        '    table.insert(alerts, '
+        '"Set opacity on " .. oor_opacity_changed '
+        '.. " out-of-range cel(s)")\n'
         "end\n"
         "\n"
         "-- Step 4: Check overlaps\n"
@@ -769,21 +825,38 @@ async def animation_sanitize(
         "\n"
         "                -- Skip full-canvas overlaps if requested\n"
         "                if ignore_full_canvas_overlaps then\n"
-        "                    local a_full = (celA.image.width >= spr.width and celA.image.height >= spr.height\n"
-        "                        and celA.position.x <= 0 and celA.position.y <= 0)\n"
-        "                    local b_full = (celB.image.width >= spr.width and celB.image.height >= spr.height\n"
-        "                        and celB.position.x <= 0 and celB.position.y <= 0)\n"
+        "                    local a_full = ("
+        "celA.image.width >= spr.width "
+        "and celA.image.height >= spr.height\n"
+        "                        and celA.position.x <= 0 "
+        "and celA.position.y <= 0)\n"
+        "                    local b_full = ("
+        "celB.image.width >= spr.width "
+        "and celB.image.height >= spr.height\n"
+        "                        and celB.position.x <= 0 "
+        "and celB.position.y <= 0)\n"
         "                    if a_full or b_full then\n"
         "                        goto continue_overlap\n"
         "                    end\n"
         "                end\n"
         "\n"
-        "                local overlaps = not (ax2 <= bx1 or bx2 <= ax1 or ay2 <= by1 or by2 <= ay1)\n"
+        "                local overlaps = not (ax2 <= bx1 "
+        "or bx2 <= ax1 or ay2 <= by1 or by2 <= ay1)\n"
         "                if overlaps then\n"
-        '                    local entry = \'{"frame":\' .. fi .. \',"layers":["\' .. nameA .. \'","\' .. nameB .. \'"]\'\n'
+        '                    local entry = \'{"frame":\' '
+        '.. fi .. \',"layers":["\' .. nameA '
+        '.. \'","\' .. nameB .. \'"]\'\n'
         "                    if report_bounds then\n"
-        '                        entry = entry .. \',"boundsA":{"x":\' .. ax1 .. \',"y":\' .. ay1 .. \',"w":\' .. celA.image.width .. \',"h":\' .. celA.image.height .. \'}\'\n'
-        '                        entry = entry .. \',"boundsB":{"x":\' .. bx1 .. \',"y":\' .. by1 .. \',"w":\' .. celB.image.width .. \',"h":\' .. celB.image.height .. \'}\'\n'
+        '                        entry = entry '
+        '.. \',"boundsA":{"x":\' .. ax1 '
+        '.. \',"y":\' .. ay1 .. \',"w":\' '
+        '.. celA.image.width .. \',"h":\' '
+        '.. celA.image.height .. \'}\'\n'
+        '                        entry = entry '
+        '.. \',"boundsB":{"x":\' .. bx1 '
+        '.. \',"y":\' .. by1 .. \',"w":\' '
+        '.. celB.image.width .. \',"h":\' '
+        '.. celB.image.height .. \'}\'\n'
         "                    end\n"
         '                    entry = entry .. \'}\'\n'
         "                    table.insert(overlap_entries, entry)\n"
@@ -808,7 +881,9 @@ async def animation_sanitize(
         "        end\n"
         "    end\n"
         "    if include_stats then\n"
-        '        layer_stats_parts[#layer_stats_parts + 1] = \'{"name":"\' .. layer.name .. \'","cels":\' .. layer_cel_count .. \'}\'\n'
+        '        layer_stats_parts[#layer_stats_parts + 1] = '
+        '\'{"name":"\' .. layer.name '
+        '.. \'","cels":\' .. layer_cel_count .. \'}\'\n'
         "    end\n"
         "end\n"
         "\n"
@@ -822,21 +897,36 @@ async def animation_sanitize(
         'local sanitized_val = (not report_only and changed) and "true" or "false"\n'
         'table.insert(parts, \'{"sanitized":\' .. sanitized_val)\n'
         "\n"
-        'table.insert(parts, \',"analysis":{"total_layers":\' .. #spr.layers .. \',"layers_checked":\' .. #process_layers .. \',"total_cels":\' .. total_cels .. \',"overlaps_found":\' .. #overlap_entries .. \',"out_of_range_found":\' .. #out_of_range_entries .. \'}\')\n'
+        'table.insert(parts, \',"analysis":{"total_layers":\' '
+        '.. #spr.layers '
+        '.. \',"layers_checked":\' '
+        '.. #process_layers '
+        '.. \',"total_cels":\' .. total_cels '
+        '.. \',"overlaps_found":\' '
+        '.. #overlap_entries '
+        '.. \',"out_of_range_found":\' '
+        '.. #out_of_range_entries .. \'}\')\n'
         "\n"
         "if include_stats then\n"
-        '    table.insert(parts, \',"layer_stats":[\' .. table.concat(layer_stats_parts, ",") .. \']\')\n'
+        '    table.insert(parts, \',"layer_stats\":[\' '
+        '.. table.concat(layer_stats_parts, \",\") '
+        '.. \']\')\n'
         "end\n"
         "\n"
-        'table.insert(parts, \',"overlaps":[\' .. table.concat(overlap_entries, ",") .. \']\')\n'
-        'table.insert(parts, \',"out_of_range":[\' .. table.concat(out_of_range_entries, ",") .. \']\')\n'
+        'table.insert(parts, \',"overlaps\":[\' '
+        '.. table.concat(overlap_entries, \",\") '
+        '.. \']\')\n'
+        'table.insert(parts, \',"out_of_range\":[\' '
+        '.. table.concat(out_of_range_entries, \",\") '
+        '.. \']\')\n'
         "\n"
         "-- alerts\n"
         "local alert_parts = {}\n"
         "for i, alert in ipairs(alerts) do\n"
         '    alert_parts[i] = \'"\' .. alert:gsub(\'"\', \'\\\\"\') .. \'"\'\n'
         "end\n"
-        'table.insert(parts, \',"alerts":[\' .. table.concat(alert_parts, ",") .. \']\')\n'
+        'table.insert(parts, \',"alerts\":[\' '
+        '.. table.concat(alert_parts, \",\") .. \']\')\n'
         "\n"
         'table.insert(parts, \'}\')\n'
         "\n"
