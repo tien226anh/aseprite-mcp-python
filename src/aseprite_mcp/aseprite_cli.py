@@ -107,6 +107,40 @@ class AsepriteCLI:
                     continue
         raise ValueError(f"No JSON output found in Aseprite response: {raw[:500]}")
 
+    def execute_lua_script(
+        self,
+        script_content: str,
+        filename: str | None = None,
+        timeout: int = 60,
+    ) -> tuple[bool, str]:
+        """Execute a Lua script in Aseprite batch mode.
+
+        Args:
+            script_content: Lua script code to execute
+            filename: Optional sprite file to open before executing
+            timeout: Timeout in seconds
+
+        Returns:
+            Tuple of (success: bool, output: str)
+        """
+        args: list[str] = []
+        if filename:
+            args.append(filename)
+
+        result = self.run_batch(
+            args=args,
+            script_content=script_content,
+            timeout=timeout,
+        )
+
+        success = result.returncode == 0
+        output = (
+            result.stdout.decode(errors="replace")
+            if success
+            else result.stderr.decode(errors="replace")
+        )
+        return success, output
+
     def list_layers(self, file_path: str) -> list[str]:
         result = self.run_batch(["--list-layers", file_path])
         if result.returncode != 0:

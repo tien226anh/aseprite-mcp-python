@@ -8,8 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from mcp.server.fastmcp import FastMCP
-
+from aseprite_mcp import mcp
 from aseprite_mcp.aseprite_cli import AsepriteCLI, AsepriteCLIError
 from aseprite_mcp.config import AsepriteConfig
 from aseprite_mcp.lua_scripts import (
@@ -24,9 +23,11 @@ from aseprite_mcp.utils import (
 )
 from aseprite_mcp.websocket_bridge import WebSocketBridge
 
-logger = logging.getLogger(__name__)
+# Import tools package to register all tool modules on the MCP server.
+# Each submodule uses @mcp.tool() decorators that register themselves on import.
+import aseprite_mcp.tools  # noqa: F401
 
-mcp = FastMCP("aseprite-mcp")
+logger = logging.getLogger(__name__)
 
 _config: AsepriteConfig | None = None
 _cli: AsepriteCLI | None = None
@@ -273,8 +274,10 @@ async def ws_connect(sprite_path: str = "") -> str:
 
 
 @mcp.tool()
-async def draw_pixels(pixels: list[dict[str, Any]]) -> str:
-    """Draw pixels on the active sprite via WebSocket.
+async def ws_draw_pixels(pixels: list[dict[str, Any]]) -> str:
+    """Draw pixels on the active sprite via WebSocket (real-time mode).
+
+    Requires ws_connect to be called first. For file-based pixel drawing, use draw_pixels instead.
 
     Each pixel is a dict with keys: x (int), y (int), color (hex string like "#ff0000").
 
@@ -294,10 +297,12 @@ async def draw_pixels(pixels: list[dict[str, Any]]) -> str:
 
 
 @mcp.tool()
-async def fill_rect(
+async def ws_fill_rect(
     x: int, y: int, width: int, height: int, color: str
 ) -> str:
-    """Fill a rectangular area on the active sprite via WebSocket.
+    """Fill a rectangular area on the active sprite via WebSocket (real-time mode).
+
+    Requires ws_connect to be called first. For file-based rectangle fill, use fill_rect or draw_rectangle instead.
 
     Args:
         x: X position of the rectangle
@@ -394,7 +399,8 @@ def pixel_art_asset_gen(
         f"- Keep within {size} resolution - every pixel counts\n"
         "\n"
         "Available tools: sprite_create, sprite_export, "
-        "sprite_info, draw_pixels, fill_rect, ws_connect\n"
+        "sprite_info, ws_draw_pixels, ws_fill_rect, ws_connect, "
+        "and all drawing/animation tools\n"
     )
 
 

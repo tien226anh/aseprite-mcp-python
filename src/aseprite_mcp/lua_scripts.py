@@ -222,4 +222,11 @@ def ws_bridge_script(ws_url: str) -> str:
 
 
 def _lua_escape(s: str) -> str:
-    return s.replace("\\", "\\\\").replace('"', '\\"')
+    """Escape a string for safe embedding inside a Lua double-quoted string literal."""
+    return (
+        s.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\0", "\\0")
+    )
