@@ -270,7 +270,7 @@ class TestDrawCircle:
         from aseprite_mcp.tools.drawing import draw_circle
 
         with patch("aseprite_mcp.tools.drawing.check_file", return_value=None):
-            result = await draw_circle(
+            await draw_circle(
                 filename="test.ase",
                 center_x=10,
                 center_y=10,
@@ -364,7 +364,7 @@ class TestDrawEllipse:
         from aseprite_mcp.tools.drawing import draw_ellipse
 
         with patch("aseprite_mcp.tools.drawing.check_file", return_value=None):
-            result = await draw_ellipse(
+            await draw_ellipse(
                 filename="test.ase",
                 center_x=10,
                 center_y=10,
@@ -490,7 +490,7 @@ class TestDrawPixelsAt:
         from aseprite_mcp.tools.drawing import draw_pixels_at
 
         with patch("aseprite_mcp.tools.drawing.check_file", return_value=None):
-            result = await draw_pixels_at(
+            await draw_pixels_at(
                 filename="test.ase",
                 layer_name="NewLayer",
                 frame_index=1,
@@ -505,7 +505,7 @@ class TestDrawPixelsAt:
         from aseprite_mcp.tools.drawing import draw_pixels_at
 
         with patch("aseprite_mcp.tools.drawing.check_file", return_value=None):
-            result = await draw_pixels_at(
+            await draw_pixels_at(
                 filename="test.ase",
                 layer_name="BG",
                 frame_index=1,
@@ -626,7 +626,7 @@ class TestDrawRectangleAt:
         from aseprite_mcp.tools.drawing import draw_rectangle_at
 
         with patch("aseprite_mcp.tools.drawing.check_file", return_value=None):
-            result = await draw_rectangle_at(
+            await draw_rectangle_at(
                 filename="test.ase",
                 layer_name="BG",
                 frame_index=1,
@@ -686,7 +686,7 @@ class TestDrawCircleAt:
         from aseprite_mcp.tools.drawing import draw_circle_at
 
         with patch("aseprite_mcp.tools.drawing.check_file", return_value=None):
-            result = await draw_circle_at(
+            await draw_circle_at(
                 filename="test.ase",
                 layer_name="BG",
                 frame_index=1,
@@ -802,7 +802,7 @@ class TestDrawPolygon:
         from aseprite_mcp.tools.drawing import draw_polygon
 
         with patch("aseprite_mcp.tools.drawing.check_file", return_value=None):
-            result = await draw_polygon(
+            await draw_polygon(
                 filename="test.ase",
                 layer_name="BG",
                 frame_index=1,
@@ -978,7 +978,7 @@ class TestApplyGradientRect:
         from aseprite_mcp.tools.drawing import apply_gradient_rect
 
         with patch("aseprite_mcp.tools.drawing.check_file", return_value=None):
-            result = await apply_gradient_rect(
+            await apply_gradient_rect(
                 filename="test.ase",
                 layer_name="BG",
                 frame_index=1,
@@ -1114,7 +1114,7 @@ class TestDrawText:
         from aseprite_mcp.tools.drawing import draw_text
 
         with patch("aseprite_mcp.tools.drawing.check_file", return_value=None):
-            result = await draw_text(
+            await draw_text(
                 filename="test.ase",
                 layer_name="BG",
                 frame_index=1,
@@ -1131,7 +1131,7 @@ class TestDrawText:
         from aseprite_mcp.tools.drawing import draw_text
 
         with patch("aseprite_mcp.tools.drawing.check_file", return_value=None):
-            result = await draw_text(
+            await draw_text(
                 filename="test.ase",
                 layer_name='Layer "test"',
                 frame_index=1,
@@ -1148,7 +1148,7 @@ class TestDrawText:
         from aseprite_mcp.tools.drawing import draw_text
 
         with patch("aseprite_mcp.tools.drawing.check_file", return_value=None):
-            result = await draw_text(
+            await draw_text(
                 filename="test.ase",
                 layer_name="BG",
                 frame_index=1,
