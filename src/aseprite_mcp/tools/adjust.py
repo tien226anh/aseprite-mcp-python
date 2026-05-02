@@ -84,90 +84,90 @@ local oy = cel.position.y
 
 -- HSV helper functions
 local function rgbToHsv(r, g, b)
-    local rn = r / 255
-    local gn = g / 255
-    local bn = b / 255
-    local max = math.max(rn, gn, bn)
-    local min = math.min(rn, gn, bn)
-    local d = max - min
-    local h = 0
-    local s = 0
-    local v = max
-    if max > 0 then s = d / max end
-    if d > 0 then
-        if max == rn then h = (gn - bn) / d
-        elseif max == gn then h = 2 + (bn - rn) / d
-        else h = 4 + (rn - gn) / d
-        end
-        h = h * 60
-        if h < 0 then h = h + 360 end
+  local rn = r / 255
+  local gn = g / 255
+  local bn = b / 255
+  local max = math.max(rn, gn, bn)
+  local min = math.min(rn, gn, bn)
+  local d = max - min
+  local h = 0
+  local s = 0
+  local v = max
+  if max > 0 then s = d / max end
+  if d > 0 then
+    if max == rn then h = (gn - bn) / d
+    elseif max == gn then h = 2 + (bn - rn) / d
+    else h = 4 + (rn - gn) / d
     end
-    return h, s, v
+    h = h * 60
+    if h < 0 then h = h + 360 end
+  end
+  return h, s, v
 end
 
 local function hsvToRgb(h, s, v)
-    if s == 0 then
-        local val = v * 255
-        return val, val, val
-    end
-    h = h / 60
-    local i = math.floor(h)
-    local f = h - i
-    local p = v * (1 - s)
-    local q = v * (1 - s * f)
-    local t = v * (1 - s * (1 - f))
-    local rn, gn, bn
-    if i == 0 then rn, gn, bn = v, t, p
-    elseif i == 1 then rn, gn, bn = q, v, p
-    elseif i == 2 then rn, gn, bn = p, v, t
-    elseif i == 3 then rn, gn, bn = p, q, v
-    elseif i == 4 then rn, gn, bn = t, p, v
-    else rn, gn, bn = v, p, q
-    end
-    return rn * 255, gn * 255, bn * 255
+  if s == 0 then
+    local val = v * 255
+    return val, val, val
+  end
+  h = h / 60
+  local i = math.floor(h)
+  local f = h - i
+  local p = v * (1 - s)
+  local q = v * (1 - s * f)
+  local t = v * (1 - s * (1 - f))
+  local rn, gn, bn
+  if i == 0 then rn, gn, bn = v, t, p
+  elseif i == 1 then rn, gn, bn = q, v, p
+  elseif i == 2 then rn, gn, bn = p, v, t
+  elseif i == 3 then rn, gn, bn = p, q, v
+  elseif i == 4 then rn, gn, bn = t, p, v
+  else rn, gn, bn = v, p, q
+  end
+  return rn * 255, gn * 255, bn * 255
 end
 
 app.transaction(function()
-    for y = 0, img.height - 1 do
-        for x = 0, img.width - 1 do
-            local c = img:getPixel(x, y)
-            local r = app.pixelColor.rgbaR(c)
-            local g = app.pixelColor.rgbaG(c)
-            local b = app.pixelColor.rgbaB(c)
-            local a = app.pixelColor.rgbaA(c)
+  for y = 0, img.height - 1 do
+    for x = 0, img.width - 1 do
+      local c = img:getPixel(x, y)
+      local r = app.pixelColor.rgbaR(c)
+      local g = app.pixelColor.rgbaG(c)
+      local b = app.pixelColor.rgbaB(c)
+      local a = app.pixelColor.rgbaA(c)
 
-            if a > 0 then
-                -- Apply brightness
-                r = math.max(0, math.min(255, r + {brightness}))
-                g = math.max(0, math.min(255, g + {brightness}))
-                b = math.max(0, math.min(255, b + {brightness}))
+      if a > 0 then
+        -- Apply brightness
+        r = math.max(0, math.min(255, r + {brightness}))
+        g = math.max(0, math.min(255, g + {brightness}))
+        b = math.max(0, math.min(255, b + {brightness}))
 
-                -- Apply contrast
-                if {contrast} ~= 0 then
-                    local factor = (259 * ({contrast} + 255)) / (255 * (259 - {contrast}))
-                    r = math.max(0, math.min(255, math.floor(factor * (r - 128) + 128 + 0.5)))
-                    g = math.max(0, math.min(255, math.floor(factor * (g - 128) + 128 + 0.5)))
-                    b = math.max(0, math.min(255, math.floor(factor * (b - 128) + 128 + 0.5)))
-                end
-
-                -- Apply hue shift and saturation
-                if {hue_shift} ~= 0 or {saturation} ~= 0 then
-                    local h, s, v = rgbToHsv(r, g, b)
-                    h = h + {hue_shift}
-                    if h < 0 then h = h + 360 end
-                    if h >= 360 then h = h - 360 end
-                    local sat_adj = {saturation} / 255
-                    s = math.max(0, math.min(1, s + sat_adj))
-                    local nr, ng, nb = hsvToRgb(h, s, v)
-                    r = math.max(0, math.min(255, math.floor(nr + 0.5)))
-                    g = math.max(0, math.min(255, math.floor(ng + 0.5)))
-                    b = math.max(0, math.min(255, math.floor(nb + 0.5)))
-                end
-
-                img:drawPixel(x, y, app.pixelColor.rgba(r, g, b, a))
-            end
+        -- Apply contrast
+        if {contrast} ~= 0 then
+            local factor = (259 * ({contrast} + 255)) / (255 * (259 - {contrast}))
+          r = math.max(0, math.min(255, math.floor(factor * (r - 128) + 128 + 0.5)))
+          g = math.max(0, math.min(255, math.floor(factor * (g - 128) + 128 + 0.5)))
+          b = math.max(0, math.min(255, math.floor(factor * (b - 128) + 128 + 0.5)))
         end
+
+        -- Apply hue shift and saturation
+        if {hue_shift} ~= 0 or {saturation} ~= 0 then
+          local h, s, v = rgbToHsv(r, g, b)
+          h = h + {hue_shift}
+          if h < 0 then h = h + 360 end
+          if h >= 360 then h = h - 360 end
+          local sat_adj = {saturation} / 255
+          s = math.max(0, math.min(1, s + sat_adj))
+          local nr, ng, nb = hsvToRgb(h, s, v)
+          r = math.max(0, math.min(255, math.floor(nr + 0.5)))
+          g = math.max(0, math.min(255, math.floor(ng + 0.5)))
+          b = math.max(0, math.min(255, math.floor(nb + 0.5)))
+        end
+
+        img:drawPixel(x, y, app.pixelColor.rgba(r, g, b, a))
+      end
     end
+  end
 end)
 
 spr:saveAs("{esc}")
@@ -233,18 +233,18 @@ end
 local img = cel.image
 
 app.transaction(function()
-    for y = 0, img.height - 1 do
-        for x = 0, img.width - 1 do
-            local c = img:getPixel(x, y)
-            local r = app.pixelColor.rgbaR(c)
-            local g = app.pixelColor.rgbaG(c)
-            local b = app.pixelColor.rgbaB(c)
-            local a = app.pixelColor.rgbaA(c)
-            if a > 0 then
-                img:drawPixel(x, y, app.pixelColor.rgba(255 - r, 255 - g, 255 - b, a))
-            end
-        end
+  for y = 0, img.height - 1 do
+    for x = 0, img.width - 1 do
+      local c = img:getPixel(x, y)
+      local r = app.pixelColor.rgbaR(c)
+      local g = app.pixelColor.rgbaG(c)
+      local b = app.pixelColor.rgbaB(c)
+      local a = app.pixelColor.rgbaA(c)
+      if a > 0 then
+        img:drawPixel(x, y, app.pixelColor.rgba(255 - r, 255 - g, 255 - b, a))
+      end
     end
+  end
 end)
 
 spr:saveAs("{esc}")

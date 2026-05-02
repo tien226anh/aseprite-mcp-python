@@ -310,7 +310,9 @@ class TestDeleteFrames:
         from aseprite_mcp.tools.animation import delete_frames
 
         with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
-            result = await delete_frames(filename="test.ase", start_frame=5, end_frame=2)
+            result = await delete_frames(
+                filename="test.ase", start_frame=5, end_frame=2
+            )
         assert "Error" in result
         assert "end_frame" in result
 
@@ -318,7 +320,9 @@ class TestDeleteFrames:
     async def test_delete_frames_path_traversal(self):
         from aseprite_mcp.tools.animation import delete_frames
 
-        result = await delete_frames(filename="../etc/passwd", start_frame=1, end_frame=3)
+        result = await delete_frames(
+            filename="../etc/passwd", start_frame=1, end_frame=3
+        )
         assert ".." in result
 
     @pytest.mark.asyncio
@@ -329,7 +333,9 @@ class TestDeleteFrames:
             "aseprite_mcp.tools.animation.check_file",
             return_value="File test.ase not found",
         ):
-            result = await delete_frames(filename="test.ase", start_frame=1, end_frame=3)
+            result = await delete_frames(
+                filename="test.ase", start_frame=1, end_frame=3
+            )
         assert "not found" in result
 
     @pytest.mark.asyncio
@@ -337,7 +343,9 @@ class TestDeleteFrames:
         from aseprite_mcp.tools.animation import delete_frames
 
         with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
-            result = await delete_frames(filename="test.ase", start_frame=2, end_frame=4)
+            result = await delete_frames(
+                filename="test.ase", start_frame=2, end_frame=4
+            )
         assert "Deleted frames 2-4" in result
         mock_cli.execute_lua_script.assert_called_once()
         script = mock_cli.execute_lua_script.call_args[0][0]
@@ -350,7 +358,9 @@ class TestDeleteFrames:
         from aseprite_mcp.tools.animation import delete_frames
 
         with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
-            result = await delete_frames(filename="test.ase", start_frame=3, end_frame=3)
+            result = await delete_frames(
+                filename="test.ase", start_frame=3, end_frame=3
+            )
         assert "Deleted frames 3-3" in result
         script = mock_cli.execute_lua_script.call_args[0][0]
         assert "for i = 3, 3, -1 do" in script
@@ -361,7 +371,9 @@ class TestDeleteFrames:
 
         mock_cli.execute_lua_script.return_value = (False, "Aseprite error")
         with patch("aseprite_mcp.tools.animation.check_file", return_value=None):
-            result = await delete_frames(filename="test.ase", start_frame=1, end_frame=2)
+            result = await delete_frames(
+                filename="test.ase", start_frame=1, end_frame=2
+            )
         assert "Failed" in result
 
 
