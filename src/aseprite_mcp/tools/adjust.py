@@ -176,7 +176,9 @@ return "Adjusted colors on layer '" .. "{esc_layer}" .. "' frame {frame_index}"
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Adjusted colors on layer '{layer_name}' frame {frame_index} in {filename}"
+        return (
+          f"Adjusted colors on layer '{layer_name}' frame {frame_index} in {filename}"
+        )
     return f"Failed to adjust colors: {output}"
 
 
@@ -253,7 +255,9 @@ return "Inverted colors on layer '" .. "{esc_layer}" .. "' frame {frame_index}"
 
     success, output = get_cli().execute_lua_script(script, filename)
     if success:
-        return f"Inverted colors on layer '{layer_name}' frame {frame_index} in {filename}"
+        return (
+          f"Inverted colors on layer '{layer_name}' frame {frame_index} in {filename}"
+        )
     return f"Failed to invert colors: {output}"
 
 
