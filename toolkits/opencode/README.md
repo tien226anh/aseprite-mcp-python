@@ -22,3 +22,23 @@ OpenCode reads `AGENTS.md` from the repo root natively — no extra config neede
 - Aseprite MCP server running
 - OpenCode with MCP configured for Aseprite MCP
 - Aseprite installed and accessible
+
+### MCP Configuration
+
+Add to `opencode.json` in your project root:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "aseprite": {
+      "type": "local",
+      "command": ["uvx", "aseprite-mcp"],
+      "enabled": true,
+      "environment": {
+        "ASEPRITE_PATH": "/path/to/aseprite"
+      }
+    }
+  }
+}
+```

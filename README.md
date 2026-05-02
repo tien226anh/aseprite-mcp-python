@@ -27,9 +27,66 @@ An MCP (Model Context Protocol) server that bridges LLMs to [Aseprite](https://w
 
 ## Installation
 
+### Option A: uvx — Zero-Install (Recommended)
+
+No clone, no install. Just add this to your MCP config:
+
+```json
+{
+  "command": "uvx",
+  "args": ["aseprite-mcp"],
+  "env": {
+    "ASEPRITE_PATH": "/path/to/aseprite"
+  }
+}
+```
+
+`uvx` downloads and runs `aseprite-mcp` on demand. See the [Integration Guide](#integration-guide) for full config snippets per tool.
+
+> **Not on PyPI yet?** Use the Git fallback:
+> ```json
+> {
+>   "command": "uvx",
+>   "args": ["--from", "git+https://github.com/anhnht/aseprite-mcp-python", "aseprite-mcp"],
+>   "env": { "ASEPRITE_PATH": "/path/to/aseprite" }
+> }
+> ```
+
+### Option B: pipx — Persistent Install
+
 ```bash
-git clone <repo-url> && cd aseprite-mcp-python
+pipx install aseprite-mcp
+```
+
+Then reference the `aseprite-mcp` binary directly in your MCP config:
+
+```json
+{
+  "command": "aseprite-mcp",
+  "env": {
+    "ASEPRITE_PATH": "/path/to/aseprite"
+  }
+}
+```
+
+> **Not on PyPI yet?** Install from Git:
+> ```bash
+> pipx install git+https://github.com/anhnht/aseprite-mcp-python
+> ```
+
+### Option C: Git Clone — Development
+
+```bash
+git clone https://github.com/anhnht/aseprite-mcp-python && cd aseprite-mcp-python
 uv sync
+uv run aseprite-mcp
+```
+
+### Option D: Docker
+
+```bash
+docker compose up -d          # HTTP mode on :8080, WS on :8765
+docker compose run --rm aseprite-mcp stdio  # stdio mode
 ```
 
 ## Configuration
@@ -87,130 +144,130 @@ aseprite-mcp --transport streamable-http --port 9090
 
 These use the original `run_json_script` / `run_batch` / `run_script` patterns:
 
-| Tool | Description |
-|------|-------------|
-| `sprite_create` | Create a new sprite (saves to `output_dir` by default) |
-| `sprite_export` | Export a sprite to PNG, GIF, etc. |
-| `sprite_info` | Get metadata (dimensions, layers, tags, frames, palette) as JSON |
-| `sprite_list_layers` | List all layers in a sprite |
-| `sprite_list_tags` | List all frame tags in a sprite |
-| `spritesheet_export` | Export as spritesheet with JSON atlas |
-| `script_execute` | Run a custom Lua script |
-| `ws_connect` | Launch Aseprite with WebSocket bridge |
-| `draw_pixels` | Draw pixels on active sprite via WebSocket |
-| `fill_rect` | Fill a rectangle on active sprite via WebSocket |
+| Tool                 | Description                                                      |
+| -------------------- | ---------------------------------------------------------------- |
+| `sprite_create`      | Create a new sprite (saves to `output_dir` by default)           |
+| `sprite_export`      | Export a sprite to PNG, GIF, etc.                                |
+| `sprite_info`        | Get metadata (dimensions, layers, tags, frames, palette) as JSON |
+| `sprite_list_layers` | List all layers in a sprite                                      |
+| `sprite_list_tags`   | List all frame tags in a sprite                                  |
+| `spritesheet_export` | Export as spritesheet with JSON atlas                            |
+| `script_execute`     | Run a custom Lua script                                          |
+| `ws_connect`         | Launch Aseprite with WebSocket bridge                            |
+| `draw_pixels`        | Draw pixels on active sprite via WebSocket                       |
+| `fill_rect`          | Fill a rectangle on active sprite via WebSocket                  |
 
 ### Canvas (`tools/canvas.py`)
 
-| Tool | Description |
-|------|-------------|
-| `create_canvas` | Create a new sprite with specified dimensions |
-| `add_layer` | Add a named layer to a sprite |
-| `add_frame` | Add a new frame |
-| `set_frame` | Set active frame by 1-based index |
-| `set_frame_duration` | Set duration of a specific frame (ms) |
-| `set_layer` | Set active layer by name (optionally create it) |
+| Tool                 | Description                                     |
+| -------------------- | ----------------------------------------------- |
+| `create_canvas`      | Create a new sprite with specified dimensions   |
+| `add_layer`          | Add a named layer to a sprite                   |
+| `add_frame`          | Add a new frame                                 |
+| `set_frame`          | Set active frame by 1-based index               |
+| `set_frame_duration` | Set duration of a specific frame (ms)           |
+| `set_layer`          | Set active layer by name (optionally create it) |
 
 ### Drawing (`tools/drawing.py`)
 
-| Tool | Description |
-|------|-------------|
-| `draw_pixels` | Draw multiple pixels on the active cel |
-| `draw_line` | Draw a line with configurable thickness |
-| `draw_rectangle` | Draw an outline or filled rectangle |
-| `fill_area` | Flood-fill from a point |
-| `draw_circle` | Draw an outline or filled circle/ellipse |
-| `draw_pixels_at` | Draw pixels on a specific layer/frame |
-| `draw_line_at` | Draw a line on a specific layer/frame |
-| `draw_rectangle_at` | Draw a rectangle on a specific layer/frame |
-| `draw_circle_at` | Draw a circle on a specific layer/frame |
-| `fill_area_at` | Flood-fill on a specific layer/frame |
-| `draw_polygon` | Draw a polygon on a specific layer/frame |
-| `draw_path` | Draw a polyline path on a specific layer/frame |
-| `apply_gradient_rect` | Apply a linear gradient fill to a rectangle |
+| Tool                  | Description                                    |
+| --------------------- | ---------------------------------------------- |
+| `draw_pixels`         | Draw multiple pixels on the active cel         |
+| `draw_line`           | Draw a line with configurable thickness        |
+| `draw_rectangle`      | Draw an outline or filled rectangle            |
+| `fill_area`           | Flood-fill from a point                        |
+| `draw_circle`         | Draw an outline or filled circle/ellipse       |
+| `draw_pixels_at`      | Draw pixels on a specific layer/frame          |
+| `draw_line_at`        | Draw a line on a specific layer/frame          |
+| `draw_rectangle_at`   | Draw a rectangle on a specific layer/frame     |
+| `draw_circle_at`      | Draw a circle on a specific layer/frame        |
+| `fill_area_at`        | Flood-fill on a specific layer/frame           |
+| `draw_polygon`        | Draw a polygon on a specific layer/frame       |
+| `draw_path`           | Draw a polyline path on a specific layer/frame |
+| `apply_gradient_rect` | Apply a linear gradient fill to a rectangle    |
 
 ### Animation (`tools/animation.py`)
 
-| Tool | Description |
-|------|-------------|
-| `add_frames` | Add multiple frames with optional duration |
-| `set_frame_duration_all` | Set duration for all frames |
-| `set_layer_visibility` | Show or hide a layer by name |
-| `set_layer_opacity` | Set layer opacity (0-255) |
-| `get_sprite_info` | Get structured sprite info (dimensions, frames, layers) |
-| `duplicate_frame_range` | Duplicate a range of frames |
-| `set_cel_position` | Set a cel's position on a specific layer/frame |
-| `tween_cel_positions` | Interpolate cel positions linearly across frames |
-| `offset_cel_positions` | Offset cel positions by a delta across frames |
-| `create_cel` | Create an empty cel on a layer/frame |
-| `clear_cel` | Delete a cel on a layer/frame |
-| `copy_cel` | Copy a cel between frames on the same layer |
-| `copy_frame` | Copy all cels from one frame to another |
-| `propagate_frame_to_range` | Copy a frame's cels to a range of frames |
-| `set_tag` | Create or update an animation tag (with direction) |
-| `tween_cel_positions_eased` | Tween cel positions with easing functions |
-| `oscillate_cel_positions` | Sine-wave oscillation of cel positions |
-| `tween_cel_opacity_eased` | Tween cel opacity with easing functions |
-| `propagate_cels` | Copy cels across specific layers and frame range |
+| Tool                        | Description                                             |
+| --------------------------- | ------------------------------------------------------- |
+| `add_frames`                | Add multiple frames with optional duration              |
+| `set_frame_duration_all`    | Set duration for all frames                             |
+| `set_layer_visibility`      | Show or hide a layer by name                            |
+| `set_layer_opacity`         | Set layer opacity (0-255)                               |
+| `get_sprite_info`           | Get structured sprite info (dimensions, frames, layers) |
+| `duplicate_frame_range`     | Duplicate a range of frames                             |
+| `set_cel_position`          | Set a cel's position on a specific layer/frame          |
+| `tween_cel_positions`       | Interpolate cel positions linearly across frames        |
+| `offset_cel_positions`      | Offset cel positions by a delta across frames           |
+| `create_cel`                | Create an empty cel on a layer/frame                    |
+| `clear_cel`                 | Delete a cel on a layer/frame                           |
+| `copy_cel`                  | Copy a cel between frames on the same layer             |
+| `copy_frame`                | Copy all cels from one frame to another                 |
+| `propagate_frame_to_range`  | Copy a frame's cels to a range of frames                |
+| `set_tag`                   | Create or update an animation tag (with direction)      |
+| `tween_cel_positions_eased` | Tween cel positions with easing functions               |
+| `oscillate_cel_positions`   | Sine-wave oscillation of cel positions                  |
+| `tween_cel_opacity_eased`   | Tween cel opacity with easing functions                 |
+| `propagate_cels`            | Copy cels across specific layers and frame range        |
 
 ### Export (`tools/export.py`)
 
-| Tool | Description |
-|------|-------------|
+| Tool            | Description                                         |
+| --------------- | --------------------------------------------------- |
 | `export_sprite` | Export sprite to PNG, GIF, etc. via CLI `--save-as` |
-| `copy_sprite` | Copy sprite to a new .aseprite file |
+| `copy_sprite`   | Copy sprite to a new .aseprite file                 |
 
 ### Palette (`tools/palette.py`)
 
-| Tool | Description |
-|------|-------------|
-| `get_palette` | Get the color palette as hex color list |
-| `set_palette` | Set palette from a list of hex colors |
+| Tool                        | Description                                 |
+| --------------------------- | ------------------------------------------- |
+| `get_palette`               | Get the color palette as hex color list     |
+| `set_palette`               | Set palette from a list of hex colors       |
 | `remap_colors_in_cel_range` | Replace colors in cels across a frame range |
 
 ### Pixel Read (`tools/pixel_read.py`)
 
-| Tool | Description |
-|------|-------------|
-| `get_pixel_color` | Read the RGBA color at a single pixel |
+| Tool              | Description                             |
+| ----------------- | --------------------------------------- |
+| `get_pixel_color` | Read the RGBA color at a single pixel   |
 | `get_pixels_rect` | Read all pixels in a rectangular region |
 
 ### Preview (`tools/preview.py`)
 
-| Tool | Description |
-|------|-------------|
+| Tool                   | Description                              |
+| ---------------------- | ---------------------------------------- |
 | `start_preview_server` | Start an HTTP server for browser preview |
-| `stop_preview_server` | Stop the preview server |
+| `stop_preview_server`  | Stop the preview server                  |
 
 ### Scene (`tools/scene.py`)
 
-| Tool | Description |
-|------|-------------|
+| Tool                          | Description                                  |
+| ----------------------------- | -------------------------------------------- |
 | `copy_layers_between_sprites` | Copy named layers from one sprite to another |
 
 ### Guide (`tools/guide.py`)
 
-| Tool | Description |
-|------|-------------|
+| Tool                       | Description                                 |
+| -------------------------- | ------------------------------------------- |
 | `animation_workflow_guide` | Return a text guide for animation workflows |
 
 ### Quality (`tools/quality.py`)
 
-| Tool | Description |
-|------|-------------|
+| Tool                    | Description                                          |
+| ----------------------- | ---------------------------------------------------- |
 | `ensure_layers_present` | Create missing cels for specified layer/frame combos |
-| `validate_scene` | Check for missing layers and cels |
-| `audit_animation` | Audit for overlaps and out-of-range layer activity |
-| `animation_sanitize` | Validate and fix animation consistency issues |
+| `validate_scene`        | Check for missing layers and cels                    |
+| `audit_animation`       | Audit for overlaps and out-of-range layer activity   |
+| `animation_sanitize`    | Validate and fix animation consistency issues        |
 
 ### Transform (`tools/transform.py`)
 
-| Tool | Description |
-|------|-------------|
-| `flip_layer` | Flip a cel horizontally or vertically |
-| `rotate_layer` | Rotate a cel by 90, 180, or 270 degrees |
-| `resize_canvas` | Resize sprite (scales all content) |
-| `crop_canvas` | Crop sprite to a specified region |
+| Tool            | Description                             |
+| --------------- | --------------------------------------- |
+| `flip_layer`    | Flip a cel horizontally or vertically   |
+| `rotate_layer`  | Rotate a cel by 90, 180, or 270 degrees |
+| `resize_canvas` | Resize sprite (scales all content)      |
+| `crop_canvas`   | Crop sprite to a specified region       |
 
 ## MCP Resources
 
@@ -225,22 +282,23 @@ These use the original `run_json_script` / `run_batch` / `run_script` patterns:
 
 ### Quick Reference
 
-| Tool | Config Key | Config Path | stdio | HTTP | Notes |
-|------|-----------|-------------|:-----:|:----:|-------|
-| Claude Desktop | `mcpServers` | `~/Library/Application Support/Claude/claude_desktop_config.json` | Y | N | Must restart after config change |
-| VS Code Copilot | `servers` | `.vscode/mcp.json` | Y | Y | Agent mode required; VS Code 1.99+ |
-| Claude Code | `mcpServers` | `.mcp.json` or `claude mcp add` | Y | Y | 3 scopes: local/project/user |
-| Cursor | `mcpServers` | `~/.cursor/mcp.json` | Y | SSE | Global config only |
-| opencode | `mcp` | `opencode.json` | Y | Y | Uses `type: "local"/"remote"`, `command` as array |
-| Windsurf | `mcpServers` | `~/.codeium/windsurf/mcp_config.json` | Y | Y | `${env:VAR}` interpolation; max 100 tools |
-| Cline | `mcpServers` | VS Code global state (UI) | Y | SSE | Configured via extension UI |
-| Continue | `mcpServers` | `~/.continue/config.json` | Y | SSE | Inside existing config.json |
-| Zed | `context_servers` | Zed `settings.json` | Y | Y | **Different key name!** |
+| Tool            | Config Key        | Config Path                                                       | stdio | HTTP  | Notes                                             |
+| --------------- | ----------------- | ----------------------------------------------------------------- | :---: | :---: | ------------------------------------------------- |
+| Claude Desktop  | `mcpServers`      | `~/Library/Application Support/Claude/claude_desktop_config.json` |   Y   |   N   | Must restart after config change                  |
+| VS Code Copilot | `servers`         | `.vscode/mcp.json`                                                |   Y   |   Y   | Agent mode required; VS Code 1.99+                |
+| Claude Code     | `mcpServers`      | `.mcp.json` or `claude mcp add`                                   |   Y   |   Y   | 3 scopes: local/project/user                      |
+| Cursor          | `mcpServers`      | `~/.cursor/mcp.json`                                              |   Y   |  SSE  | Global config only                                |
+| opencode        | `mcp`             | `opencode.json`                                                   |   Y   |   Y   | Uses `type: "local"/"remote"`, `command` as array |
+| Windsurf        | `mcpServers`      | `~/.codeium/windsurf/mcp_config.json`                             |   Y   |   Y   | `${env:VAR}` interpolation; max 100 tools         |
+| Cline           | `mcpServers`      | VS Code global state (UI)                                         |   Y   |  SSE  | Configured via extension UI                       |
+| Continue        | `mcpServers`      | `~/.continue/config.json`                                         |   Y   |  SSE  | Inside existing config.json                       |
+| Zed             | `context_servers` | Zed `settings.json`                                               |   Y   |   Y   | **Different key name!**                           |
 
-Below are config snippets for each tool in three variants:
+Below are config snippets for each tool in four variants:
 
+- **uvx (zero-install)** — `uvx aseprite-mcp`, no clone or install needed
 - **Local (uv run)** — running from a source checkout
-- **Installed** — `aseprite-mcp` installed globally via `pip` or `uv tool`
+- **Installed** — `aseprite-mcp` installed via `pipx install aseprite-mcp`
 - **Docker** — running inside a container
 
 Replace `/path/to/aseprite-mcp-python` and `/path/to/aseprite` with your actual paths.
@@ -252,6 +310,22 @@ Replace `/path/to/aseprite-mcp-python` and `/path/to/aseprite` with your actual 
 **Config file:** `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
 
 Claude Desktop only supports stdio transport. You must fully quit and restart the app after editing the config.
+
+**uvx (zero-install):**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "uvx",
+      "args": ["aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
 
 **Local (uv run):**
 
@@ -269,7 +343,7 @@ Claude Desktop only supports stdio transport. You must fully quit and restart th
 }
 ```
 
-**Installed:**
+**Installed (pipx):**
 
 ```json
 {
@@ -305,6 +379,22 @@ Claude Desktop only supports stdio transport. You must fully quit and restart th
 
 Requires VS Code 1.99+ and Agent mode in Copilot Chat. Organization admins must enable the "MCP servers in Copilot" policy for Business/Enterprise users.
 
+**uvx (zero-install):**
+
+```json
+{
+  "servers": {
+    "aseprite": {
+      "command": "uvx",
+      "args": ["aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
 **Local (uv run):**
 
 ```json
@@ -321,7 +411,7 @@ Requires VS Code 1.99+ and Agent mode in Copilot Chat. Organization admins must 
 }
 ```
 
-**Installed:**
+**Installed (pipx):**
 
 ```json
 {
@@ -374,10 +464,13 @@ Then in VS Code `settings.json`:
 You can also use the CLI:
 
 ```bash
+# uvx (zero-install)
+claude mcp add --transport stdio aseprite -- uvx aseprite-mcp
+
 # stdio (from source)
 claude mcp add --transport stdio aseprite -- uv run --directory /path/to/aseprite-mcp-python aseprite-mcp
 
-# stdio (installed)
+# stdio (installed via pipx)
 claude mcp add --transport stdio aseprite -- aseprite-mcp
 
 # HTTP
@@ -386,6 +479,25 @@ claude mcp add --transport http aseprite http://localhost:8080/mcp
 
 Or manually in `.mcp.json`:
 
+**uvx (zero-install):**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Local (uv run):**
+
 ```json
 {
   "mcpServers": {
@@ -393,6 +505,22 @@ Or manually in `.mcp.json`:
       "type": "stdio",
       "command": "uv",
       "args": ["run", "--directory", "/path/to/aseprite-mcp-python", "aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
+**Installed (pipx):**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "type": "stdio",
+      "command": "aseprite-mcp",
       "env": {
         "ASEPRITE_PATH": "/usr/bin/aseprite"
       }
@@ -436,6 +564,22 @@ Or manually in `.mcp.json`:
 
 Cursor supports stdio and SSE transports. Config is global (not per-project).
 
+**uvx (zero-install):**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "uvx",
+      "args": ["aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
 **Local (uv run):**
 
 ```json
@@ -452,7 +596,7 @@ Cursor supports stdio and SSE transports. Config is global (not per-project).
 }
 ```
 
-**Installed:**
+**Installed (pipx):**
 
 ```json
 {
@@ -500,6 +644,24 @@ Cursor supports stdio and SSE transports. Config is global (not per-project).
 
 opencode uses a different schema: `type: "local"` for stdio, `type: "remote"` for HTTP, and `command` as an array (not `command` string + `args` array). Environment variables use `{env:VAR}` interpolation.
 
+**uvx (zero-install):**
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "aseprite": {
+      "type": "local",
+      "command": ["uvx", "aseprite-mcp"],
+      "enabled": true,
+      "environment": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
 **Local (uv run):**
 
 ```json
@@ -518,7 +680,7 @@ opencode uses a different schema: `type: "local"` for stdio, `type: "remote"` fo
 }
 ```
 
-**Installed:**
+**Installed (pipx):**
 
 ```json
 {
@@ -574,6 +736,22 @@ opencode uses a different schema: `type: "local"` for stdio, `type: "remote"` fo
 
 Windsurf supports `${env:VAR}` and `${file:/path}` interpolation in commands and args. Remote servers use `serverUrl` (not `url`). Max 100 MCP tools total.
 
+**uvx (zero-install):**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "uvx",
+      "args": ["aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
 **Local (uv run):**
 
 ```json
@@ -590,7 +768,7 @@ Windsurf supports `${env:VAR}` and `${file:/path}` interpolation in commands and
 }
 ```
 
-**Installed:**
+**Installed (pipx):**
 
 ```json
 {
@@ -636,6 +814,22 @@ Windsurf supports `${env:VAR}` and `${file:/path}` interpolation in commands and
 
 **Config:** Managed through the Cline extension UI — click the MCP icon in the sidebar, then "Edit MCP Settings". Paste JSON directly into the settings.
 
+**uvx (zero-install):**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "uvx",
+      "args": ["aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
 **Local (uv run):**
 
 ```json
@@ -652,7 +846,7 @@ Windsurf supports `${env:VAR}` and `${file:/path}` interpolation in commands and
 }
 ```
 
-**Installed:**
+**Installed (pipx):**
 
 ```json
 {
@@ -688,6 +882,22 @@ Windsurf supports `${env:VAR}` and `${file:/path}` interpolation in commands and
 
 The `mcpServers` key goes inside the existing `config.json` alongside other Continue settings.
 
+**uvx (zero-install):**
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "uvx",
+      "args": ["aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
 **Local (uv run):**
 
 ```json
@@ -704,7 +914,7 @@ The `mcpServers` key goes inside the existing `config.json` alongside other Cont
 }
 ```
 
-**Installed:**
+**Installed (pipx):**
 
 ```json
 {
@@ -740,6 +950,22 @@ The `mcpServers` key goes inside the existing `config.json` alongside other Cont
 
 Zed uses **`context_servers`** (not `mcpServers`). This is the only tool with a different top-level key.
 
+**uvx (zero-install):**
+
+```json
+{
+  "context_servers": {
+    "aseprite": {
+      "command": "uvx",
+      "args": ["aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/usr/bin/aseprite"
+      }
+    }
+  }
+}
+```
+
 **Local (uv run):**
 
 ```json
@@ -756,7 +982,7 @@ Zed uses **`context_servers`** (not `mcpServers`). This is the only tool with a 
 }
 ```
 
-**Installed:**
+**Installed (pipx):**
 
 ```json
 {

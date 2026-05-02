@@ -18,3 +18,21 @@ cp -r toolkits/continue/.continue/rules /path/to/your/project/.continue/rules
 - Aseprite MCP server running
 - Continue with MCP configured for Aseprite MCP
 - Aseprite installed and accessible
+
+### MCP Configuration
+
+Add to `~/.continue/config.json`:
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "uvx",
+      "args": ["aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/path/to/aseprite"
+      }
+    }
+  }
+}
+```
