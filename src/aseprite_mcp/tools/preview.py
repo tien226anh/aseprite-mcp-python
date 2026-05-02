@@ -73,8 +73,9 @@ async def start_preview_server(directory: str, port: int = 8000) -> str:
     }
 
     if os.name == "nt":
-        popen_kwargs["creationflags"] = (  # type: ignore[attr-defined]
-            subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+        popen_kwargs["creationflags"] = (
+            getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+            | getattr(subprocess, "DETACHED_PROCESS", 0)
         )
     else:
         popen_kwargs["start_new_session"] = True  # type: ignore[assignment]
