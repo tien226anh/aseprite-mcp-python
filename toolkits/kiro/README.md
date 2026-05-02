@@ -31,3 +31,21 @@ Kiro reads `AGENTS.md` from the repo root natively.
 - Aseprite MCP server running
 - Kiro with MCP configured for Aseprite MCP
 - Aseprite installed and accessible
+
+### MCP Configuration
+
+Add to your Kiro MCP config:
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "uvx",
+      "args": ["aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/path/to/aseprite"
+      }
+    }
+  }
+}
+```

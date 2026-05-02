@@ -25,3 +25,21 @@ Windsurf reads `AGENTS.md` from the repo root natively.
 - Aseprite MCP server running
 - Windsurf with MCP configured for Aseprite MCP
 - Aseprite installed and accessible
+
+### MCP Configuration
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "uvx",
+      "args": ["aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/path/to/aseprite"
+      }
+    }
+  }
+}
+```

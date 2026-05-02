@@ -32,3 +32,23 @@ cp -r toolkits/claude-code/.claude/skills /path/to/your/project/.claude/skills
 - Aseprite MCP server running
 - Claude Code with MCP configured for Aseprite MCP
 - Aseprite installed and accessible
+
+### MCP Configuration
+
+Add to `.mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "aseprite": {
+      "command": "uvx",
+      "args": ["aseprite-mcp"],
+      "env": {
+        "ASEPRITE_PATH": "/path/to/aseprite"
+      }
+    }
+  }
+}
+```
+
+Or via CLI: `claude mcp add --transport stdio aseprite -- uvx aseprite-mcp`
