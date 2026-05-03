@@ -70,17 +70,18 @@ async def draw_pixels(
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
 
+    local cel = app.activeCel
+    if not cel then
+        app.activeLayer = spr.layers[1]
+        app.activeFrame = spr.frames[1]
+        cel = app.activeCel
+        if not cel then return "No active cel and couldn't create one" end
+    end
+    local img = cel.image
+    local ox = cel.position.x
+    local oy = cel.position.y
+
     app.transaction(function()
-        local cel = app.activeCel
-        if not cel then
-            app.activeLayer = spr.layers[1]
-            app.activeFrame = spr.frames[1]
-            cel = app.activeCel
-            if not cel then return "No active cel and couldn't create one" end
-        end
-        local img = cel.image
-        local ox = cel.position.x
-        local oy = cel.position.y
 {pixel_code}
     end)
 
@@ -135,45 +136,18 @@ async def draw_line(
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
 
-    local function put_thick(img, x, y, color, size, ox, oy)
-        local r = math.max(0, math.floor(size / 2))
-        for dy = -r, r do
-            for dx = -r, r do
-                img:putPixel(x + dx - ox, y + dy - oy, color)
-            end
-        end
+    local cel = app.activeCel
+    if not cel then
+        app.activeLayer = spr.layers[1]
+        app.activeFrame = spr.frames[1]
+        cel = app.activeCel
+        if not cel then return "No active cel and couldn't create one" end
     end
-
-    local function draw_line(img, x0, y0, x1, y1, color, size, ox, oy)
-        local dx = math.abs(x1 - x0)
-        local sx = x0 < x1 and 1 or -1
-        local dy = -math.abs(y1 - y0)
-        local sy = y0 < y1 and 1 or -1
-        local err = dx + dy
-        while true do
-            if size > 1 then
-                put_thick(img, x0, y0, color, size, ox, oy)
-            else
-                img:putPixel(x0 - ox, y0 - oy, color)
-            end
-            if x0 == x1 and y0 == y1 then break end
-            local e2 = 2 * err
-            if e2 >= dy then err = err + dy; x0 = x0 + sx end
-            if e2 <= dx then err = err + dx; y0 = y0 + sy end
-        end
-    end
+    local img = cel.image
+    local ox = cel.position.x
+    local oy = cel.position.y
 
     app.transaction(function()
-        local cel = app.activeCel
-        if not cel then
-            app.activeLayer = spr.layers[1]
-            app.activeFrame = spr.frames[1]
-            cel = app.activeCel
-            if not cel then return "No active cel and couldn't create one" end
-        end
-        local img = cel.image
-        local ox = cel.position.x
-        local oy = cel.position.y
         local color = Color({r}, {g}, {b}, {a})
         draw_line(img, {x1}, {y1}, {x2}, {y2}, color, {thickness}, ox, oy)
     end)
@@ -231,15 +205,15 @@ async def draw_rectangle(
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
 
-    app.transaction(function()
-        local cel = app.activeCel
-        if not cel then
-            app.activeLayer = spr.layers[1]
-            app.activeFrame = spr.frames[1]
-            cel = app.activeCel
-            if not cel then return "No active cel and couldn't create one" end
-        end
+    local cel = app.activeCel
+    if not cel then
+        app.activeLayer = spr.layers[1]
+        app.activeFrame = spr.frames[1]
+        cel = app.activeCel
+        if not cel then return "No active cel and couldn't create one" end
+    end
 
+    app.transaction(function()
         local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="{tool_name}",
@@ -289,15 +263,15 @@ async def fill_area(
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
 
-    app.transaction(function()
-        local cel = app.activeCel
-        if not cel then
-            app.activeLayer = spr.layers[1]
-            app.activeFrame = spr.frames[1]
-            cel = app.activeCel
-            if not cel then return "No active cel and couldn't create one" end
-        end
+    local cel = app.activeCel
+    if not cel then
+        app.activeLayer = spr.layers[1]
+        app.activeFrame = spr.frames[1]
+        cel = app.activeCel
+        if not cel then return "No active cel and couldn't create one" end
+    end
 
+    app.transaction(function()
         local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="paint_bucket",
@@ -357,15 +331,15 @@ async def draw_circle(
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
 
-    app.transaction(function()
-        local cel = app.activeCel
-        if not cel then
-            app.activeLayer = spr.layers[1]
-            app.activeFrame = spr.frames[1]
-            cel = app.activeCel
-            if not cel then return "No active cel and couldn't create one" end
-        end
+    local cel = app.activeCel
+    if not cel then
+        app.activeLayer = spr.layers[1]
+        app.activeFrame = spr.frames[1]
+        cel = app.activeCel
+        if not cel then return "No active cel and couldn't create one" end
+    end
 
+    app.transaction(function()
         local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="{tool_name}",
@@ -430,15 +404,15 @@ async def draw_ellipse(
     local spr = app.activeSprite
     if not spr then return "No active sprite" end
 
-    app.transaction(function()
-        local cel = app.activeCel
-        if not cel then
-            app.activeLayer = spr.layers[1]
-            app.activeFrame = spr.frames[1]
-            cel = app.activeCel
-            if not cel then return "No active cel and couldn't create one" end
-        end
+    local cel = app.activeCel
+    if not cel then
+        app.activeLayer = spr.layers[1]
+        app.activeFrame = spr.frames[1]
+        cel = app.activeCel
+        if not cel then return "No active cel and couldn't create one" end
+    end
 
+    app.transaction(function()
         local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="{tool_name}",
@@ -518,16 +492,16 @@ async def draw_text(
     end
     if not target then return "Layer not found" end
 
-    app.transaction(function()
-        app.activeLayer = target
-        app.activeFrame = spr.frames[idx]
-        local cel = target:cel(spr.frames[idx])
-        if not cel and {create_flag} then
-            local img = Image(spr.width, spr.height, spr.colorMode)
-            cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
-        end
-        if not cel then return end
+    app.activeLayer = target
+    app.activeFrame = spr.frames[idx]
+    local cel = target:cel(spr.frames[idx])
+    if not cel and {create_flag} then
+        local img = Image(spr.width, spr.height, spr.colorMode)
+        cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
+    end
+    if not cel then return "No cel at layer/frame" end
 
+    app.transaction(function()
         local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="text",
@@ -613,18 +587,19 @@ async def draw_pixels_at(
     end
     if not target then return "Layer not found" end
 
+    app.activeLayer = target
+    app.activeFrame = spr.frames[idx]
+    local cel = target:cel(spr.frames[idx])
+    if not cel and {create_flag} then
+        local img = Image(spr.width, spr.height, spr.colorMode)
+        cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
+    end
+    if not cel then return "No cel at layer/frame" end
+    local img = cel.image
+    local ox = cel.position.x
+    local oy = cel.position.y
+
     app.transaction(function()
-        app.activeLayer = target
-        app.activeFrame = spr.frames[idx]
-        local cel = target:cel(spr.frames[idx])
-        if not cel and {create_flag} then
-            local img = Image(spr.width, spr.height, spr.colorMode)
-            cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
-        end
-        if not cel then return end
-        local img = cel.image
-        local ox = cel.position.x
-        local oy = cel.position.y
 {pixel_code}
     end)
 
@@ -723,18 +698,19 @@ async def draw_line_at(
     end
     if not target then return "Layer not found" end
 
+    app.activeLayer = target
+    app.activeFrame = spr.frames[idx]
+    local cel = target:cel(spr.frames[idx])
+    if not cel and {create_flag} then
+        local img = Image(spr.width, spr.height, spr.colorMode)
+        cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
+    end
+    if not cel then return "No cel at layer/frame" end
+    local img = cel.image
+    local ox = cel.position.x
+    local oy = cel.position.y
+
     app.transaction(function()
-        app.activeLayer = target
-        app.activeFrame = spr.frames[idx]
-        local cel = target:cel(spr.frames[idx])
-        if not cel and {create_flag} then
-            local img = Image(spr.width, spr.height, spr.colorMode)
-            cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
-        end
-        if not cel then return end
-        local img = cel.image
-        local ox = cel.position.x
-        local oy = cel.position.y
         local color = Color({r}, {g}, {b}, {a})
         draw_line(img, {x1}, {y1}, {x2}, {y2}, color, {thickness}, ox, oy)
     end)
@@ -808,15 +784,16 @@ async def draw_rectangle_at(
     end
     if not target then return "Layer not found" end
 
+    app.activeLayer = target
+    app.activeFrame = spr.frames[idx]
+    local cel = target:cel(spr.frames[idx])
+    if not cel and {create_flag} then
+        local img = Image(spr.width, spr.height, spr.colorMode)
+        cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
+    end
+    if not cel then return "No cel at layer/frame" end
+
     app.transaction(function()
-        app.activeLayer = target
-        app.activeFrame = spr.frames[idx]
-        local cel = target:cel(spr.frames[idx])
-        if not cel and {create_flag} then
-            local img = Image(spr.width, spr.height, spr.colorMode)
-            cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
-        end
-        if not cel then return end
         local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="{tool_name}",
@@ -892,15 +869,16 @@ async def draw_circle_at(
     end
     if not target then return "Layer not found" end
 
+    app.activeLayer = target
+    app.activeFrame = spr.frames[idx]
+    local cel = target:cel(spr.frames[idx])
+    if not cel and {create_flag} then
+        local img = Image(spr.width, spr.height, spr.colorMode)
+        cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
+    end
+    if not cel then return "No cel at layer/frame" end
+
     app.transaction(function()
-        app.activeLayer = target
-        app.activeFrame = spr.frames[idx]
-        local cel = target:cel(spr.frames[idx])
-        if not cel and {create_flag} then
-            local img = Image(spr.width, spr.height, spr.colorMode)
-            cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
-        end
-        if not cel then return end
         local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="{tool_name}",
@@ -974,15 +952,16 @@ async def fill_area_at(
     end
     if not target then return "Layer not found" end
 
+    app.activeLayer = target
+    app.activeFrame = spr.frames[idx]
+    local cel = target:cel(spr.frames[idx])
+    if not cel and {create_flag} then
+        local img = Image(spr.width, spr.height, spr.colorMode)
+        cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
+    end
+    if not cel then return "No cel at layer/frame" end
+
     app.transaction(function()
-        app.activeLayer = target
-        app.activeFrame = spr.frames[idx]
-        local cel = target:cel(spr.frames[idx])
-        if not cel and {create_flag} then
-            local img = Image(spr.width, spr.height, spr.colorMode)
-            cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
-        end
-        if not cel then return end
         local color = Color({r}, {g}, {b}, {a})
         app.useTool({{
             tool="paint_bucket",
@@ -1107,25 +1086,26 @@ async def draw_polygon(
     end
     if not target then return "Layer not found" end
 
+    app.activeLayer = target
+    app.activeFrame = spr.frames[idx]
+    local cel = target:cel(spr.frames[idx])
+    if not cel and {create_flag} then
+        local img = Image(spr.width, spr.height, spr.colorMode)
+        cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
+    end
+    if not cel then return "No cel at layer/frame" end
+    local img = cel.image
+    local ox = cel.position.x
+    local oy = cel.position.y
+    local color = Color({r}, {g}, {b}, {a})
+    local pts = {{ {points_lua} }}
+    -- Adjust all points to image-local coordinates
+    for i = 1, #pts do
+        pts[i].x = pts[i].x - ox
+        pts[i].y = pts[i].y - oy
+    end
+
     app.transaction(function()
-        app.activeLayer = target
-        app.activeFrame = spr.frames[idx]
-        local cel = target:cel(spr.frames[idx])
-        if not cel and {create_flag} then
-            local img = Image(spr.width, spr.height, spr.colorMode)
-            cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
-        end
-        if not cel then return end
-        local img = cel.image
-        local ox = cel.position.x
-        local oy = cel.position.y
-        local color = Color({r}, {g}, {b}, {a})
-        local pts = {{ {points_lua} }}
-        -- Adjust all points to image-local coordinates
-        for i = 1, #pts do
-            pts[i].x = pts[i].x - ox
-            pts[i].y = pts[i].y - oy
-        end
         if {fill_flag} then
             fill_polygon(img, pts, color)
         end
@@ -1229,20 +1209,21 @@ async def draw_path(
     end
     if not target then return "Layer not found" end
 
+    app.activeLayer = target
+    app.activeFrame = spr.frames[idx]
+    local cel = target:cel(spr.frames[idx])
+    if not cel and {create_flag} then
+        local img = Image(spr.width, spr.height, spr.colorMode)
+        cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
+    end
+    if not cel then return "No cel at layer/frame" end
+    local img = cel.image
+    local ox = cel.position.x
+    local oy = cel.position.y
+    local color = Color({r}, {g}, {b}, {a})
+    local pts = {{ {points_lua} }}
+
     app.transaction(function()
-        app.activeLayer = target
-        app.activeFrame = spr.frames[idx]
-        local cel = target:cel(spr.frames[idx])
-        if not cel and {create_flag} then
-            local img = Image(spr.width, spr.height, spr.colorMode)
-            cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
-        end
-        if not cel then return end
-        local img = cel.image
-        local ox = cel.position.x
-        local oy = cel.position.y
-        local color = Color({r}, {g}, {b}, {a})
-        local pts = {{ {points_lua} }}
         for i = 1, #pts - 1 do
             draw_line(
                 img, pts[i].x, pts[i].y,
@@ -1332,20 +1313,21 @@ async def apply_gradient_rect(
     end
     if not target then return "Layer not found" end
 
+    app.activeLayer = target
+    app.activeFrame = spr.frames[idx]
+    local cel = target:cel(spr.frames[idx])
+    if not cel and {create_flag} then
+        local img = Image(spr.width, spr.height, spr.colorMode)
+        cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
+    end
+    if not cel then return "No cel at layer/frame" end
+    local img = cel.image
+    local ox = cel.position.x
+    local oy = cel.position.y
+    local w = {width}
+    local h = {height}
+
     app.transaction(function()
-        app.activeLayer = target
-        app.activeFrame = spr.frames[idx]
-        local cel = target:cel(spr.frames[idx])
-        if not cel and {create_flag} then
-            local img = Image(spr.width, spr.height, spr.colorMode)
-            cel = spr:newCel(target, spr.frames[idx], img, Point(0, 0))
-        end
-        if not cel then return end
-        local img = cel.image
-        local ox = cel.position.x
-        local oy = cel.position.y
-        local w = {width}
-        local h = {height}
         for iy = 0, h - 1 do
             for ix = 0, w - 1 do
                 local t = 0
